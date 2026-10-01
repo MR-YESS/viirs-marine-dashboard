@@ -1,0 +1,697 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ระบบติดตามสิ่งแวดล้อมทางทะเล | VIIRS SST & Chlorophyll-a</title>
+<meta name="description" content="ติดตามอุณหภูมิผิวน้ำทะเลและคลอโรฟิลล์-เอ ในอ่าวไทยและทะเลอันดามัน จากดาวเทียม VIIRS">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600&family=Noto+Serif+Thai:wght@600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css">
+<style>
+  /* ---------- สีและตัวอักษร (แก้สีหลักได้จากแท็บ WEB_Settings → primary_color) ---------- */
+  :root {
+    --navy: #0A2E4D;
+    --blue: #0E6BA8;
+    --cyan: #4FB3D9;
+    --foam: #EAF6FB;
+    --mist: #F5FAFD;
+    --white: #FFFFFF;
+    --ink: #16324A;
+    --muted: #5A7287;
+    --line: #D3E6F0;
+    --warm: #C0392B;
+    --cool: #1F6FB2;
+    --serif: "Noto Serif Thai", "Sarabun", Georgia, serif;
+    --sans: "IBM Plex Sans Thai", "Sarabun", "Segoe UI", Tahoma, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } * { transition: none !important; } }
+  body { margin: 0; font-family: var(--sans); font-size: 16px; line-height: 1.65; color: var(--ink); background: var(--white); }
+  a { color: var(--blue); }
+  :focus-visible { outline: 3px solid var(--cyan); outline-offset: 2px; }
+  .wrap { width: min(1200px, 100% - 2.5rem); margin-inline: auto; }
+
+  /* ---------- หัวเว็บ ---------- */
+  .masthead { background: linear-gradient(160deg, var(--navy) 0%, var(--blue) 100%); color: var(--white); position: relative; padding: 2.75rem 0 4.5rem; }
+  .masthead .org { margin: 0 0 .5rem; color: #BFE3F2; font-size: .95rem; }
+  .masthead h1 { font-family: var(--serif); font-weight: 700; font-size: clamp(1.9rem, 4.2vw, 3rem); line-height: 1.25; margin: 0; max-width: 22ch; }
+  .masthead .subtitle { margin: .75rem 0 0; font-size: clamp(1rem, 1.8vw, 1.2rem); color: #DDF1FA; max-width: 60ch; }
+  .masthead .facts { display: flex; flex-wrap: wrap; gap: .5rem 1.75rem; margin: 1.5rem 0 0; padding: 0; list-style: none; font-size: .92rem; color: #CFEAF6; }
+  .masthead .facts strong { color: var(--white); font-weight: 600; }
+  .wave { position: absolute; left: 0; right: 0; bottom: -1px; width: 100%; height: 56px; display: block; }
+
+  /* ---------- แถบตัวเลือก ---------- */
+  .controls { position: sticky; top: 0; z-index: 1000; background: rgba(255,255,255,.96); backdrop-filter: blur(6px); border-bottom: 1px solid var(--line); }
+  .controls .wrap { display: flex; flex-wrap: wrap; align-items: center; gap: .75rem 1.25rem; padding: .7rem 0; }
+  .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 999px; padding: 3px; background: var(--mist); }
+  .seg button { font: inherit; font-size: .92rem; border: 0; background: transparent; color: var(--muted); padding: .35rem .95rem; border-radius: 999px; cursor: pointer; }
+  .seg button[aria-pressed="true"] { background: var(--blue); color: var(--white); font-weight: 500; }
+  .field { display: inline-flex; align-items: center; gap: .5rem; font-size: .92rem; color: var(--muted); }
+  .field select { font: inherit; font-size: .95rem; color: var(--ink); border: 1px solid var(--line); border-radius: 8px; padding: .35rem 2rem .35rem .65rem; background: var(--white); }
+
+  /* ---------- ส่วนแผนที่ + สรุปค่า ---------- */
+  .overview { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(280px, 1fr); gap: 1.75rem; margin: 2rem auto 0; align-items: start; }
+  figure { margin: 0; }
+  .map-box { position: relative; border: 1px solid var(--line); border-radius: 14px; overflow: hidden; background: var(--foam); }
+  .map-stage { position: relative; }
+  #map { height: 560px; width: 100%; background: var(--foam); }
+  .legend { position: absolute; left: 12px; bottom: 12px; z-index: 500; background: rgba(255,255,255,.94); border: 1px solid var(--line); border-radius: 10px; padding: .55rem .75rem; font-size: .8rem; color: var(--muted); min-width: 200px; }
+  .legend .bar { height: 10px; border-radius: 5px; margin: .35rem 0 .2rem; }
+  .legend .ticks { display: flex; justify-content: space-between; font-variant-numeric: tabular-nums; }
+  .month-ctl { display: flex; align-items: center; gap: .6rem; padding: .75rem .9rem; border-top: 1px solid var(--line); background: var(--white); }
+  .month-ctl button { font: inherit; width: 2.1rem; height: 2.1rem; border-radius: 50%; border: 1px solid var(--line); background: var(--white); color: var(--blue); cursor: pointer; font-size: 1rem; line-height: 1; }
+  .month-ctl button:hover { background: var(--foam); }
+  .month-ctl input[type=range] { flex: 1; accent-color: var(--blue); }
+  .month-ctl output { min-width: 9.5rem; text-align: right; font-weight: 500; }
+  .zone-label { background: transparent; border: 0; }
+  .zone-label div { transform: translate(-50%, -50%); display: inline-block; white-space: nowrap; text-align: center; font-family: var(--sans); font-size: 11.5px; line-height: 1.25; color: var(--navy); background: rgba(255,255,255,.85); border-radius: 6px; padding: 2px 6px; pointer-events: none; }
+  .zone-label b { display: block; font-size: 13px; font-variant-numeric: tabular-nums; }
+
+  .readout { background: var(--mist); border: 1px solid var(--line); border-radius: 14px; padding: 1.5rem 1.5rem 1.25rem; }
+  .readout h2 { font-family: var(--serif); font-size: 1.45rem; line-height: 1.3; margin: 0; color: var(--navy); }
+  .readout .when { margin: .2rem 0 1.1rem; color: var(--muted); }
+  .readout .big { font-size: clamp(2.6rem, 5vw, 3.4rem); font-weight: 600; line-height: 1.05; color: var(--navy); font-variant-numeric: tabular-nums; }
+  .readout .big small { font-size: 1.1rem; font-weight: 500; color: var(--muted); margin-left: .3rem; }
+  .readout .big-label { color: var(--muted); font-size: .92rem; margin: .25rem 0 0; }
+  .readout .verdict { margin: 1rem 0 0; padding: .6rem .85rem; border-radius: 10px; background: var(--white); border-left: 4px solid var(--cyan); }
+  .readout .verdict.up { border-left-color: var(--warm); }
+  .readout .verdict.down { border-left-color: var(--cool); }
+  .stats { margin: 1.25rem 0 0; display: grid; grid-template-columns: 1fr auto; gap: .55rem 1rem; }
+  .stats dt { color: var(--muted); }
+  .stats dd { margin: 0; text-align: right; font-weight: 500; font-variant-numeric: tabular-nums; }
+  .readout .hint { margin: 1.25rem 0 0; font-size: .85rem; color: var(--muted); }
+
+  figcaption { font-size: .9rem; color: var(--muted); margin-top: .6rem; max-width: 80ch; }
+  figcaption strong { color: var(--ink); font-weight: 600; }
+
+  /* ---------- กราฟ ---------- */
+  .section-head { margin: 3.5rem 0 1rem; }
+  .section-head h2 { font-family: var(--serif); font-size: clamp(1.4rem, 2.6vw, 1.85rem); color: var(--navy); margin: 0; }
+  .section-head p { margin: .35rem 0 0; color: var(--muted); max-width: 70ch; }
+  .figs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 2.25rem 1.75rem; }
+  .figs .wide { grid-column: 1 / -1; }
+  .chart-box { position: relative; height: 340px; border-top: 3px solid var(--blue); padding-top: .9rem; }
+  .figs .wide .chart-box { height: 380px; }
+  .fig-title { font-weight: 600; margin: 0 0 .25rem; color: var(--navy); }
+  .stat-chip { display: inline-block; margin-left: .35rem; padding: .05rem .55rem; border-radius: 999px; background: var(--foam); color: var(--blue); font-size: .85rem; font-weight: 500; }
+
+  /* ---------- เนื้อหาจาก WEB_Content ---------- */
+  .notes { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1.75rem 3rem; }
+  .notes article h3 { font-family: var(--serif); font-size: 1.15rem; color: var(--navy); margin: 0 0 .4rem; }
+  .notes article p { margin: 0; white-space: pre-line; max-width: 65ch; }
+  .notes ol { margin: 0; padding-left: 1.25rem; }
+  .notes li { margin-bottom: .35rem; }
+
+  footer { margin-top: 4rem; background: var(--navy); color: #CFE6F2; padding: 2rem 0; font-size: .92rem; }
+  footer p { margin: .2rem 0; }
+  footer strong { color: var(--white); }
+
+  /* ---------- สถานะโหลด / ข้อผิดพลาด ---------- */
+  .status { margin: 2rem auto 0; padding: 1rem 1.25rem; border-radius: 12px; background: var(--foam); color: var(--navy); }
+  .status.error { background: #FDECEA; color: #7A1F16; border: 1px solid #F3C1BA; }
+  [hidden] { display: none !important; }
+
+  @media (max-width: 900px) {
+    .overview, .notes, .figs { grid-template-columns: minmax(0, 1fr); }
+    #map { height: 440px; }
+    .chart-box, .figs .wide .chart-box { height: 300px; }
+  }
+  @media (max-width: 560px) {
+    .controls .wrap { gap: .5rem .75rem; }
+    .field { flex: 1 1 45%; }
+    .field select { width: 100%; }
+    .month-ctl output { min-width: 7rem; font-size: .9rem; }
+    .legend { min-width: 150px; left: 8px; bottom: 8px; padding: .4rem .6rem; }
+  }
+</style>
+</head>
+<body>
+
+<header class="masthead">
+  <div class="wrap">
+    <p class="org" id="org"></p>
+    <h1 id="siteTitle">ระบบติดตามสิ่งแวดล้อมทางทะเล</h1>
+    <p class="subtitle" id="siteSubtitle">อุณหภูมิผิวน้ำทะเล (SST) และคลอโรฟิลล์-เอ จากดาวเทียม VIIRS</p>
+    <ul class="facts">
+      <li>ข้อมูล <strong id="factRange">—</strong></li>
+      <li>ค่าปกติ <strong id="factClim">—</strong></li>
+      <li>อัปเดตล่าสุด <strong id="factUpdated">—</strong></li>
+    </ul>
+  </div>
+  <svg class="wave" viewBox="0 0 1440 56" preserveAspectRatio="none" aria-hidden="true">
+    <path d="M0,32 C180,8 360,8 540,28 C720,48 900,52 1080,34 C1260,16 1350,18 1440,26 L1440,56 L0,56 Z" fill="#FFFFFF"/>
+  </svg>
+</header>
+
+<nav class="controls" aria-label="ตัวเลือกข้อมูล">
+  <div class="wrap">
+    <div class="seg" role="group" aria-label="พารามิเตอร์">
+      <button type="button" data-param="SST" aria-pressed="true">SST</button>
+      <button type="button" data-param="CHLA" aria-pressed="false">Chl-a</button>
+    </div>
+    <div class="seg" role="group" aria-label="รูปแบบค่า">
+      <button type="button" data-mode="value" aria-pressed="true">ค่าที่วัดได้</button>
+      <button type="button" data-mode="anomaly" aria-pressed="false">ค่าผิดปกติ</button>
+    </div>
+    <label class="field">พื้นที่ <select id="zoneSelect"></select></label>
+    <label class="field">ปี <select id="yearSelect"></select></label>
+  </div>
+</nav>
+
+<main class="wrap">
+  <div class="status" id="status">กำลังโหลดข้อมูลจาก Google Sheets…</div>
+
+  <div id="app" hidden>
+    <section class="overview" aria-label="แผนที่และสรุปค่า">
+      <figure>
+        <div class="map-box">
+          <div class="map-stage">
+            <div id="map" role="application" aria-label="แผนที่โซนทะเล คลิกโซนเพื่อดูรายละเอียด"></div>
+            <div class="legend" id="legend"></div>
+          </div>
+          <div class="month-ctl">
+            <button type="button" id="prevMonth" aria-label="เดือนก่อนหน้า">‹</button>
+            <input type="range" id="monthRange" min="1" max="12" step="1" value="1" aria-label="เลือกเดือน">
+            <button type="button" id="nextMonth" aria-label="เดือนถัดไป">›</button>
+            <output id="monthLabel">—</output>
+          </div>
+        </div>
+        <figcaption><strong>รูปที่ 1</strong> <span id="mapCaption"></span> คลิกที่โซนบนแผนที่เพื่อดูรายละเอียดของโซนนั้น</figcaption>
+      </figure>
+
+      <aside class="readout" aria-live="polite">
+        <h2 id="roZone">—</h2>
+        <p class="when" id="roWhen">—</p>
+        <div class="big" id="roBig">—</div>
+        <p class="big-label" id="roBigLabel"></p>
+        <p class="verdict" id="roVerdict"></p>
+        <dl class="stats">
+          <dt>ค่าที่วัดได้ (เฉลี่ย)</dt><dd id="roValue">—</dd>
+          <dt id="roClimLabel">ค่าปกติ</dt><dd id="roClim">—</dd>
+          <dt>ค่าผิดปกติ (Anomaly)</dt><dd id="roAnom">—</dd>
+          <dt id="roRangeLabel">ช่วงค่าในพื้นที่</dt><dd id="roRange">—</dd>
+        </dl>
+        <p class="hint">ค่าผิดปกติ = ค่าที่วัดได้ − ค่าปกติของเดือนเดียวกัน ค่าบวกแปลว่าสูงกว่าปกติ ค่าลบแปลว่าต่ำกว่าปกติ</p>
+      </aside>
+    </section>
+
+    <section aria-labelledby="chartsHead">
+      <div class="section-head">
+        <h2 id="chartsHead">ผลการวิเคราะห์</h2>
+        <p id="chartsIntro"></p>
+      </div>
+      <div class="figs">
+        <figure class="wide">
+          <p class="fig-title" id="f2Title"></p>
+          <div class="chart-box"><canvas id="chartMonthly"></canvas></div>
+          <figcaption><strong>รูปที่ 2</strong> เส้นน้ำเงินเข้มคือปีที่เลือก เส้นฟ้าจางคือปีอื่นสำหรับเปรียบเทียบ <span id="f2Extra"></span></figcaption>
+        </figure>
+        <figure>
+          <p class="fig-title" id="f3Title"></p>
+          <div class="chart-box"><canvas id="chartAnomaly"></canvas></div>
+          <figcaption><strong>รูปที่ 3</strong> แท่งสีแดงคือเดือนที่สูงกว่าปกติ แท่งสีน้ำเงินคือเดือนที่ต่ำกว่าปกติ</figcaption>
+        </figure>
+        <figure>
+          <p class="fig-title" id="f4Title"></p>
+          <div class="chart-box"><canvas id="chartTrend"></canvas></div>
+          <figcaption><strong>รูปที่ 4</strong> จุดวงกลมคือค่าเฉลี่ยของปีที่มีข้อมูลครบ 12 เดือน สามเหลี่ยมคือปีที่ข้อมูลยังไม่ครบ เส้นแดงคือแนวโน้มเชิงเส้นจากปีที่ครบ <span class="stat-chip" id="f4Slope"></span></figcaption>
+        </figure>
+        <figure class="wide">
+          <p class="fig-title" id="f5Title"></p>
+          <div class="chart-box"><canvas id="chartCompare"></canvas></div>
+          <figcaption><strong>รูปที่ 5</strong> แกนขวา (Chl-a) กลับด้าน ถ้าเส้นทั้งสองขึ้นลงไปด้วยกัน แปลว่าเมื่อน้ำอุ่นกว่าปกติ คลอโรฟิลล์มักต่ำกว่าปกติ <span class="stat-chip" id="f5Corr"></span></figcaption>
+        </figure>
+      </div>
+    </section>
+
+    <section aria-labelledby="notesHead">
+      <div class="section-head"><h2 id="notesHead">ข้อมูลและระเบียบวิธี</h2></div>
+      <div class="notes" id="notes"></div>
+    </section>
+  </div>
+</main>
+
+<footer>
+  <div class="wrap">
+    <p><strong id="footTitle">ระบบติดตามสิ่งแวดล้อมทางทะเล</strong></p>
+    <p id="footAuthor"></p>
+    <p>ข้อมูลดาวเทียม VIIRS (Suomi NPP / NOAA-20) แผนที่ฐาน © OpenStreetMap contributors © CARTO</p>
+  </div>
+</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+/* =====================================================================
+   ตั้งค่า: ถ้าเปลี่ยนไปใช้ Google Sheet ไฟล์อื่น แก้แค่ SHEET_ID ตรงนี้
+   (SHEET_ID คือตัวอักษรยาว ๆ ในลิงก์ระหว่าง /d/ กับ /edit)
+   ===================================================================== */
+const CONFIG = {
+  SHEET_ID: '1tUxPe5V5xBrq0LAEiaJAXAqJ_Txn_goS6jUCpk7TQnA',
+  TABS: { db: 'WEB_DB', settings: 'WEB_Settings', zones: 'WEB_Zones', content: 'WEB_Content' },
+  OVERALL: 'ภาพรวม',
+  MAP_BOUNDS: [[5.6, 96.9], [14.0, 103.0]],
+};
+
+const MONTHS = ['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน','กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
+const MONTHS_SHORT = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+const PARAMS = {
+  SST:  { name: 'อุณหภูมิผิวน้ำทะเล (SST)', short: 'SST', unit: '°C', unitKey: 'sst_unit', near: 0.1 },
+  CHLA: { name: 'คลอโรฟิลล์-เอ (Chl-a)', short: 'Chl-a', unit: 'mg/m³', unitKey: 'chla_unit', near: 0.05 },
+};
+const CONTENT_ORDER = ['about', 'methodology', 'data_source', 'limitations', 'references'];
+
+const S = { param: 'SST', mode: 'value', zone: CONFIG.OVERALL, year: null, month: 1 };
+const D = { index: new Map(), clim: new Map(), years: [], zones: [], settings: {}, content: [], climStart: null, climEnd: null };
+const charts = {};
+const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+let map = null;
+const zoneLayers = {};
+
+/* ---------------- โหลดข้อมูล ---------------- */
+
+function sheetUrl(tab) {
+  return 'https://docs.google.com/spreadsheets/d/' + CONFIG.SHEET_ID +
+    '/gviz/tq?tqx=out:csv&headers=1&sheet=' + encodeURIComponent(tab);
+}
+
+async function loadTab(tab) {
+  const res = await fetch(sheetUrl(tab));
+  if (!res.ok) throw new Error('โหลดแท็บ ' + tab + ' ไม่สำเร็จ (HTTP ' + res.status + ')');
+  const text = await res.text();
+  if (/^\s*</.test(text)) throw new Error('เปิดแท็บ ' + tab + ' ไม่ได้ ตรวจว่าแชร์ Sheet เป็น "Anyone with the link" สิทธิ์ Viewer แล้ว');
+  return Papa.parse(text, { header: true, skipEmptyLines: true, transformHeader: h => h.trim() }).data;
+}
+
+const num = v => {
+  if (v === null || v === undefined) return null;
+  const s = String(v).trim().replace(/,/g, '');
+  if (s === '') return null;
+  const n = Number(s);
+  return Number.isFinite(n) ? n : null;
+};
+const k = (...a) => a.join('|');
+
+function buildData(db, settingsRows, zoneRows, contentRows) {
+  if (!db.length || !('parameter' in db[0]) || !('mean' in db[0])) {
+    throw new Error('ไม่พบแท็บ WEB_DB หรือรูปแบบไม่ถูกต้อง ให้กดเมนู 🌊 เว็บไซต์ → อัปเดตข้อมูลเว็บ ใน Google Sheets ก่อน');
+  }
+  settingsRows.forEach(r => { if (r.key) D.settings[String(r.key).trim()] = String(r.value ?? '').trim(); });
+
+  const years = new Set(), dataZones = [];
+  const climSheet = new Map();
+  db.forEach(r => {
+    const type = String(r.type || '').trim(), p = String(r.parameter || '').trim(), z = String(r.zone || '').trim();
+    const m = num(r.month), y = num(r.year);
+    if (!PARAMS[p] || !z || !m) return;
+    const row = { min: num(r.min), max: num(r.max), mean: num(r.mean) };
+    if (!dataZones.includes(z)) dataZones.push(z);
+    if (type === 'climatology') { climSheet.set(k(p, z, m), row); return; }
+    if (!y || (type !== 'value' && type !== 'anomaly')) return;
+    years.add(y);
+    D.index.set(k(type, p, z, y, m), row);
+  });
+  D.years = [...years].sort((a, b) => a - b);
+
+  // โซน: ตามลำดับในแท็บ WEB_Zones (show = TRUE) แล้วต่อด้วยโซนที่มีในข้อมูลแต่ไม่อยู่ในแท็บ
+  const hidden = new Set();
+  zoneRows.forEach(r => {
+    const name = String(r.zone || '').trim();
+    if (!name) return;
+    if (String(r.show).trim().toUpperCase() === 'FALSE') { hidden.add(name); return; }
+    const b = [num(r.lat_min), num(r.lat_max), num(r.lon_min), num(r.lon_max)];
+    D.zones.push({ name, en: String(r.zone_en || '').trim(), bounds: b.every(v => v !== null) ? [[b[0], b[2]], [b[1], b[3]]] : null });
+  });
+  dataZones.forEach(z => { if (!hidden.has(z) && !D.zones.some(x => x.name === z)) D.zones.push({ name: z, en: '', bounds: null }); });
+  D.zones.sort((a, b) => (b.name === CONFIG.OVERALL) - (a.name === CONFIG.OVERALL));
+
+  // ค่าปกติ: ใช้ค่าจาก Sheet ถ้ามี ไม่อย่างนั้นคำนวณจากค่าเฉลี่ยรายเดือนช่วงปีอ้างอิง
+  D.climStart = num(D.settings.climatology_start) || D.years[0];
+  D.climEnd = num(D.settings.climatology_end) || D.years[D.years.length - 1];
+  Object.keys(PARAMS).forEach(p => D.zones.forEach(z => {
+    for (let m = 1; m <= 12; m++) {
+      const vals = [];
+      for (let y = D.climStart; y <= D.climEnd; y++) {
+        const r = D.index.get(k('value', p, z.name, y, m));
+        if (r && r.mean !== null) vals.push(r.mean);
+      }
+      const sheet = climSheet.get(k(p, z.name, m));
+      const mean = sheet && sheet.mean !== null ? sheet.mean : (vals.length ? avg(vals) : null);
+      if (mean !== null) D.clim.set(k(p, z.name, m), mean);
+    }
+  }));
+
+  D.content = contentRows.filter(r => r.section && (r.text || r.title));
+
+  Object.keys(PARAMS).forEach(p => { const u = D.settings[PARAMS[p].unitKey]; if (u) PARAMS[p].unit = u; });
+}
+
+/* ---------------- ตัวช่วยคำนวณ ---------------- */
+
+const avg = a => a.reduce((s, v) => s + v, 0) / a.length;
+const get = (type, p, z, y, m) => D.index.get(k(type, p, z, y, m)) || null;
+const metric = (mode, p, z, y, m) => { const r = get(mode, p, z, y, m); return r ? r.mean : null; };
+const climOf = (p, z, m) => D.clim.has(k(p, z, m)) ? D.clim.get(k(p, z, m)) : null;
+const monthsWithData = (p, y) => {
+  const out = [];
+  for (let m = 1; m <= 12; m++) if (D.zones.some(z => get('value', p, z.name, y, m) || get('anomaly', p, z.name, y, m))) out.push(m);
+  return out;
+};
+const fmt = (v, d = 2) => v === null || v === undefined || Number.isNaN(v) ? '—' :
+  v.toLocaleString('th-TH', { minimumFractionDigits: d, maximumFractionDigits: d });
+const fmtS = (v, d = 2) => v === null || v === undefined ? '—' : (v > 0 ? '+' : v < 0 ? '−' : '') + fmt(Math.abs(v), d);
+const unit = () => PARAMS[S.param].unit;
+const quantile = (arr, q) => { const a = [...arr].sort((x, y) => x - y); if (!a.length) return 0; const i = (a.length - 1) * q; const lo = Math.floor(i); return a[lo] + (a[Math.ceil(i)] - a[lo]) * (i - lo); };
+
+function linreg(xs, ys) {
+  const n = xs.length; if (n < 2) return null;
+  const mx = avg(xs), my = avg(ys);
+  let sxy = 0, sxx = 0;
+  for (let i = 0; i < n; i++) { sxy += (xs[i] - mx) * (ys[i] - my); sxx += (xs[i] - mx) ** 2; }
+  if (!sxx) return null;
+  const b = sxy / sxx; return { b, a: my - b * mx };
+}
+function pearson(xs, ys) {
+  const n = xs.length; if (n < 3) return null;
+  const mx = avg(xs), my = avg(ys);
+  let sxy = 0, sxx = 0, syy = 0;
+  for (let i = 0; i < n; i++) { sxy += (xs[i] - mx) * (ys[i] - my); sxx += (xs[i] - mx) ** 2; syy += (ys[i] - my) ** 2; }
+  return sxx && syy ? sxy / Math.sqrt(sxx * syy) : null;
+}
+
+/* ---------------- สีแผนที่ ---------------- */
+
+const hex2rgb = h => { const x = h.replace('#', ''); return [0, 2, 4].map(i => parseInt(x.substr(i, 2), 16)); };
+const rgb2hex = c => '#' + c.map(v => Math.round(v).toString(16).padStart(2, '0')).join('');
+function ramp(stops, t) {
+  t = Math.max(0, Math.min(1, t));
+  const seg = (stops.length - 1) * t, i = Math.min(Math.floor(seg), stops.length - 2), f = seg - i;
+  const a = hex2rgb(stops[i]), b = hex2rgb(stops[i + 1]);
+  return rgb2hex(a.map((v, j) => v + (b[j] - v) * f));
+}
+const RAMP_VALUE = ['#E8F5FB', '#9FD3EA', '#4FB3D9', '#1F78B4', '#0A2E4D'];
+const RAMP_ANOM = ['#1F5FA8', '#7FB4DD', '#F4F7FA', '#EE9A86', '#B5312A'];
+const domains = {};
+function domain(p, mode) {
+  const id = p + mode;
+  if (domains[id]) return domains[id];
+  const vals = [];
+  D.index.forEach((r, key) => { const [t, pp, z] = key.split('|'); if (t === mode && pp === p && z !== CONFIG.OVERALL && r.mean !== null) vals.push(r.mean); });
+  if (mode === 'anomaly') {
+    const A = Math.max(quantile(vals.map(Math.abs), 0.95), 0.05);
+    domains[id] = [-A, A];
+  } else {
+    domains[id] = vals.length ? [quantile(vals, 0.05), quantile(vals, 0.95)] : [0, 1];
+  }
+  return domains[id];
+}
+function colorFor(v) {
+  if (v === null) return '#DCE4EA';
+  const [lo, hi] = domain(S.param, S.mode);
+  return ramp(S.mode === 'anomaly' ? RAMP_ANOM : RAMP_VALUE, (v - lo) / (hi - lo || 1));
+}
+
+/* ---------------- แผนที่ ---------------- */
+
+function initMap() {
+  map = L.map('map', { scrollWheelZoom: false, zoomSnap: 0.25, attributionControl: true });
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+    attribution: '© OpenStreetMap contributors © CARTO', subdomains: 'abcd', maxZoom: 12,
+  }).addTo(map);
+  const withBounds = D.zones.filter(z => z.bounds);
+  const area = z => (z.bounds[1][0] - z.bounds[0][0]) * (z.bounds[1][1] - z.bounds[0][1]);
+  withBounds.sort((a, b) => area(b) - area(a)).forEach(z => {
+    const rect = L.rectangle(z.bounds, { weight: 1.2, color: '#0A2E4D', fillOpacity: 0.78 }).addTo(map);
+    rect.on('click', () => setZone(z.name));
+    rect.on('mouseover', () => rect.setStyle({ weight: 2.5 }));
+    rect.on('mouseout', () => styleZone(z.name));
+    const c = L.latLngBounds(z.bounds).getCenter();
+    const label = L.marker(c, { interactive: false, keyboard: false, icon: L.divIcon({ className: 'zone-label', html: '', iconSize: [0, 0] }) }).addTo(map);
+    rect.bindTooltip('', { sticky: true, direction: 'top' });
+    zoneLayers[z.name] = { rect, label, small: area(z) < 1 };
+  });
+  map.fitBounds(withBounds.length ? L.featureGroup(Object.values(zoneLayers).map(l => l.rect)).getBounds().pad(0.15) : CONFIG.MAP_BOUNDS);
+}
+
+function styleZone(name) {
+  const l = zoneLayers[name]; if (!l) return;
+  const sel = name === S.zone;
+  l.rect.setStyle({ weight: sel ? 3.5 : 1.2, color: sel ? '#0A2E4D' : '#3A5B75', dashArray: sel ? null : '' });
+}
+
+function renderMap() {
+  const d = 2;
+  Object.entries(zoneLayers).forEach(([name, l]) => {
+    const v = metric(S.mode, S.param, name, S.year, S.month);
+    l.rect.setStyle({ fillColor: colorFor(v) });
+    styleZone(name);
+    if (name === S.zone) l.rect.bringToFront();
+    const val = v === null ? 'ไม่มีข้อมูล' : (S.mode === 'anomaly' ? fmtS(v, d) : fmt(v, d));
+    // โซนเล็กแสดงแค่ตัวเลข ชื่อโซนดูได้จากการชี้เมาส์
+    l.label.setIcon(L.divIcon({ className: 'zone-label', iconSize: [0, 0], html: '<div>' + (l.small ? '' : esc(name)) + '<b>' + val + '</b></div>' }));
+    l.rect.setTooltipContent(esc(name) + ': ' + val + (v === null ? '' : ' ' + esc(unit())));
+  });
+  const [lo, hi] = domain(S.param, S.mode);
+  const stops = S.mode === 'anomaly' ? RAMP_ANOM : RAMP_VALUE;
+  const mid = (lo + hi) / 2;
+  const f = v => S.mode === 'anomaly' ? fmtS(v, 2) : fmt(v, 2);
+  document.getElementById('legend').innerHTML =
+    (S.mode === 'anomaly' ? 'ค่าผิดปกติ' : 'ค่าที่วัดได้') + ' ' + PARAMS[S.param].short + ' (' + esc(unit()) + ')' +
+    '<div class="bar" style="background:linear-gradient(90deg,' + stops.join(',') + ')"></div>' +
+    '<div class="ticks"><span>' + f(lo) + '</span><span>' + f(mid) + '</span><span>' + f(hi) + '</span></div>';
+  document.getElementById('mapCaption').textContent =
+    (S.mode === 'anomaly' ? 'ค่าผิดปกติ' : 'ค่าเฉลี่ย') + PARAMS[S.param].name + ' รายโซน เดือน' + MONTHS[S.month - 1] + ' ' + S.year +
+    (S.mode === 'anomaly' ? ' สีแดงคือสูงกว่าปกติ สีน้ำเงินคือต่ำกว่าปกติ' : '');
+}
+
+/* ---------------- กล่องสรุปค่า ---------------- */
+
+function renderReadout() {
+  const p = S.param, z = S.zone, y = S.year, m = S.month, u = unit();
+  const val = get('value', p, z, y, m), an = get('anomaly', p, z, y, m), cl = climOf(p, z, m);
+  const zoneInfo = D.zones.find(x => x.name === z);
+  document.getElementById('roZone').textContent = z + (zoneInfo && zoneInfo.en ? ' · ' + zoneInfo.en : '');
+  document.getElementById('roWhen').textContent = PARAMS[p].name + ' เดือน' + MONTHS[m - 1] + ' ' + y;
+  const bigV = S.mode === 'anomaly' ? (an ? an.mean : null) : (val ? val.mean : null);
+  document.getElementById('roBig').innerHTML = (S.mode === 'anomaly' ? fmtS(bigV) : fmt(bigV)) + '<small>' + esc(u) + '</small>';
+  document.getElementById('roBigLabel').textContent = S.mode === 'anomaly' ? 'ค่าผิดปกติเฉลี่ยของโซน' : 'ค่าเฉลี่ยของโซน';
+  document.getElementById('roValue').textContent = val ? fmt(val.mean) + ' ' + u : '—';
+  document.getElementById('roClimLabel').textContent = 'ค่าปกติ (เฉลี่ย ' + D.climStart + '–' + D.climEnd + ')';
+  document.getElementById('roClim').textContent = cl !== null ? fmt(cl) + ' ' + u : '—';
+  document.getElementById('roAnom').textContent = an ? fmtS(an.mean) + ' ' + u : '—';
+  const rr = S.mode === 'anomaly' ? an : val;
+  document.getElementById('roRangeLabel').textContent = S.mode === 'anomaly' ? 'ช่วงค่าผิดปกติในพื้นที่' : 'ช่วงค่าในพื้นที่ (ต่ำสุด–สูงสุด)';
+  document.getElementById('roRange').textContent = rr && rr.min !== null ? (S.mode === 'anomaly' ? fmtS(rr.min) + ' ถึง ' + fmtS(rr.max) : fmt(rr.min) + ' – ' + fmt(rr.max)) : '—';
+
+  const v = document.getElementById('roVerdict');
+  v.className = 'verdict';
+  if (!an || an.mean === null) { v.textContent = 'ยังไม่มีค่าผิดปกติของเดือนนี้'; }
+  else if (Math.abs(an.mean) < PARAMS[p].near) { v.textContent = 'ใกล้เคียงค่าปกติของเดือน' + MONTHS[m - 1]; }
+  else {
+    const up = an.mean > 0;
+    v.classList.add(up ? 'up' : 'down');
+    v.textContent = (up ? 'สูงกว่า' : 'ต่ำกว่า') + 'ค่าปกติ ' + fmt(Math.abs(an.mean)) + ' ' + u;
+  }
+}
+
+/* ---------------- กราฟ ---------------- */
+
+function baseOptions(extra) {
+  return Object.assign({
+    responsive: true, maintainAspectRatio: false, animation: false,
+    interaction: { mode: 'nearest', intersect: false },
+    plugins: { legend: { labels: { boxWidth: 14, usePointStyle: true } } },
+  }, extra || {});
+}
+function draw(id, config) {
+  if (charts[id]) charts[id].destroy();
+  charts[id] = new Chart(document.getElementById(id), config);
+}
+
+function renderCharts() {
+  const p = S.param, z = S.zone, u = unit(), mode = S.mode;
+  const navy = css('--navy'), blue = css('--blue'), warm = css('--warm'), cool = css('--cool');
+  const label = mode === 'anomaly' ? 'ค่าผิดปกติ' : 'ค่าที่วัดได้';
+  document.getElementById('chartsIntro').textContent = PARAMS[p].name + ' · ' + z + ' · หน่วย ' + u;
+
+  // รูปที่ 2 อนุกรมเวลารายเดือน
+  document.getElementById('f2Title').textContent = label + 'รายเดือน แยกตามปี';
+  const ds2 = D.years.map(y => {
+    const sel = y === S.year;
+    return { label: String(y), data: MONTHS.map((_, i) => metric(mode, p, z, y, i + 1)), borderColor: sel ? blue : 'rgba(79,179,217,.32)', backgroundColor: sel ? blue : 'rgba(79,179,217,.32)', borderWidth: sel ? 3 : 1.2, pointRadius: sel ? 3.5 : 0, tension: .3, order: sel ? 0 : 3 };
+  });
+  if (mode === 'value') {
+    ds2.push({ label: 'ค่าปกติ ' + D.climStart + '–' + D.climEnd, data: MONTHS.map((_, i) => climOf(p, z, i + 1)), borderColor: navy, backgroundColor: navy, borderDash: [6, 4], borderWidth: 2, pointRadius: 0, tension: .3, order: 1 });
+    document.getElementById('f2Extra').textContent = 'เส้นประคือค่าปกติ ถ้าเส้นปีที่เลือกอยู่เหนือเส้นประ แปลว่าเดือนนั้นสูงกว่าปกติ';
+  } else {
+    ds2.push({ label: 'ค่าปกติ (0)', data: MONTHS.map(() => 0), borderColor: navy, backgroundColor: navy, borderDash: [6, 4], borderWidth: 1.5, pointRadius: 0, order: 1 });
+    document.getElementById('f2Extra').textContent = 'เส้นประคือศูนย์ (เท่ากับค่าปกติ)';
+  }
+  draw('chartMonthly', { type: 'line', data: { labels: MONTHS_SHORT, datasets: ds2 }, options: baseOptions({
+    plugins: { legend: { labels: { boxWidth: 14, filter: it => it.text === String(S.year) || it.text.startsWith('ค่าปกติ') } },
+      tooltip: { callbacks: { label: c => c.dataset.label + ': ' + (mode === 'anomaly' ? fmtS(c.parsed.y) : fmt(c.parsed.y)) + ' ' + u } } },
+    scales: { y: { title: { display: true, text: label + ' (' + u + ')' } } } }) });
+
+  // รูปที่ 3 ค่าผิดปกติรายเดือนของปีที่เลือก
+  document.getElementById('f3Title').textContent = 'ค่าผิดปกติรายเดือน ปี ' + S.year;
+  const an = MONTHS.map((_, i) => metric('anomaly', p, z, S.year, i + 1));
+  draw('chartAnomaly', { type: 'bar', data: { labels: MONTHS_SHORT, datasets: [{ label: 'ค่าผิดปกติ', data: an, backgroundColor: an.map(v => v === null ? 'transparent' : v >= 0 ? warm : cool), borderRadius: 3 }] },
+    options: baseOptions({ indexAxis: 'y', plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => fmtS(c.parsed.x) + ' ' + u } } },
+      scales: { x: { title: { display: true, text: 'ค่าผิดปกติ (' + u + ')' }, grid: { color: c => c.tick.value === 0 ? navy : 'rgba(0,0,0,.06)' } }, y: { reverse: false } } }) });
+
+  // รูปที่ 4 แนวโน้มรายปี
+  document.getElementById('f4Title').textContent = label + 'เฉลี่ยรายปี';
+  const yearly = D.years.map(y => {
+    const v = []; for (let m = 1; m <= 12; m++) { const x = metric(mode, p, z, y, m); if (x !== null) v.push(x); }
+    return { y, mean: v.length ? avg(v) : null, full: v.length === 12 };
+  });
+  const full = yearly.filter(r => r.full && r.mean !== null);
+  const reg = linreg(full.map(r => r.y), full.map(r => r.mean));
+  const ds4 = [{ label: label + 'เฉลี่ยรายปี', data: yearly.map(r => r.mean), borderColor: blue, backgroundColor: yearly.map(r => r.full ? blue : css('--cyan')),
+    pointStyle: yearly.map(r => r.full ? 'circle' : 'triangle'), pointRadius: yearly.map(r => r.full ? 4.5 : 7), borderWidth: 2, tension: 0 }];
+  if (reg) ds4.push({ label: 'แนวโน้ม', data: yearly.map(r => reg.a + reg.b * r.y), borderColor: warm, backgroundColor: warm, borderWidth: 2, pointRadius: 0, borderDash: [] });
+  document.getElementById('f4Slope').textContent = reg ? 'แนวโน้ม ' + fmtS(reg.b * 10, 2) + ' ' + u + ' ต่อ 10 ปี' : 'ข้อมูลไม่พอคำนวณแนวโน้ม';
+  draw('chartTrend', { type: 'line', data: { labels: yearly.map(r => String(r.y)), datasets: ds4 }, options: baseOptions({
+    plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => c.dataset.label + ': ' + fmt(c.parsed.y) + ' ' + u + (c.datasetIndex === 0 && !yearly[c.dataIndex].full ? ' (ข้อมูลไม่ครบปี)' : '') } } },
+    scales: { y: { title: { display: true, text: u } } } }) });
+
+  // รูปที่ 5 เปรียบเทียบ SST กับ Chl-a anomaly
+  document.getElementById('f5Title').textContent = 'ค่าผิดปกติของ SST เทียบกับ Chl-a รายเดือน';
+  const labels = [], sst = [], chl = [], px = [], py = [];
+  D.years.forEach(y => { for (let m = 1; m <= 12; m++) {
+    const a = metric('anomaly', 'SST', z, y, m), b = metric('anomaly', 'CHLA', z, y, m);
+    if (a === null && b === null) continue;
+    labels.push(MONTHS_SHORT[m - 1] + ' ' + String(y).slice(2)); sst.push(a); chl.push(b);
+    if (a !== null && b !== null) { px.push(a); py.push(b); }
+  } });
+  const r = pearson(px, py);
+  document.getElementById('f5Corr').textContent = r === null ? 'ข้อมูลไม่พอคำนวณสหสัมพันธ์' : 'สหสัมพันธ์ r = ' + fmtS(r, 2);
+  draw('chartCompare', { type: 'line', data: { labels, datasets: [
+      { label: 'SST anomaly (' + PARAMS.SST.unit + ')', data: sst, borderColor: blue, backgroundColor: blue, borderWidth: 2, pointRadius: 0, tension: .25, yAxisID: 'y' },
+      { label: 'Chl-a anomaly (' + PARAMS.CHLA.unit + ', กลับด้าน)', data: chl, borderColor: '#2BA39A', backgroundColor: '#2BA39A', borderWidth: 2, pointRadius: 0, tension: .25, yAxisID: 'y1' } ] },
+    options: baseOptions({ interaction: { mode: 'index', intersect: false },
+      scales: { x: { ticks: { maxTicksLimit: 14, autoSkip: true } },
+        y: { position: 'left', title: { display: true, text: 'SST anomaly (' + PARAMS.SST.unit + ')' } },
+        y1: { position: 'right', reverse: true, grid: { drawOnChartArea: false }, title: { display: true, text: 'Chl-a anomaly (' + PARAMS.CHLA.unit + ')' } } } }) });
+}
+
+/* ---------------- เนื้อหาและหัวเว็บ ---------------- */
+
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+function renderStatic() {
+  const st = D.settings;
+  if (st.site_title) { document.getElementById('siteTitle').textContent = st.site_title; document.getElementById('footTitle').textContent = st.site_title; document.title = st.site_title + ' | VIIRS'; }
+  if (st.site_subtitle) document.getElementById('siteSubtitle').textContent = st.site_subtitle;
+  document.getElementById('org').textContent = st.organization || '';
+  if (/^#[0-9a-f]{6}$/i.test(st.primary_color || '')) document.documentElement.style.setProperty('--blue', st.primary_color);
+  document.getElementById('footAuthor').textContent = [st.author && 'จัดทำโดย ' + st.author, st.organization, st.contact].filter(Boolean).join(' · ');
+
+  const last = D.years[D.years.length - 1];
+  const lastM = monthsWithData('SST', last).concat(monthsWithData('CHLA', last));
+  document.getElementById('factRange').textContent = 'ม.ค. ' + D.years[0] + ' – ' + (lastM.length ? MONTHS_SHORT[Math.max(...lastM) - 1] : '') + ' ' + last;
+  document.getElementById('factClim').textContent = D.climStart + '–' + D.climEnd;
+  document.getElementById('factUpdated').textContent = st.last_updated || '—';
+
+  const notes = document.getElementById('notes');
+  notes.innerHTML = '';
+  const groups = {};
+  D.content.forEach(r => { const s = String(r.section).trim(); (groups[s] = groups[s] || []).push(r); });
+  const order = Object.keys(groups).sort((a, b) => (CONTENT_ORDER.indexOf(a) + 1 || 99) - (CONTENT_ORDER.indexOf(b) + 1 || 99));
+  order.forEach(sec => {
+    const rows = groups[sec], art = document.createElement('article');
+    const h = document.createElement('h3'); h.textContent = rows[0].title || sec; art.appendChild(h);
+    if (sec === 'references' || rows.length > 1) {
+      const ol = document.createElement('ol');
+      rows.forEach(r => { if (r.text) { const li = document.createElement('li'); li.textContent = r.text; ol.appendChild(li); } });
+      art.appendChild(ol);
+    } else { const p = document.createElement('p'); p.textContent = rows[0].text || ''; art.appendChild(p); }
+    notes.appendChild(art);
+  });
+}
+
+/* ---------------- ตัวเลือกและการโต้ตอบ ---------------- */
+
+function setZone(name) { S.zone = name; document.getElementById('zoneSelect').value = name; render(); }
+function fitMonth() {
+  const ms = monthsWithData(S.param, S.year);
+  if (!ms.length) return;
+  if (!ms.includes(S.month)) S.month = ms[ms.length - 1];
+}
+
+function initControls() {
+  const zs = document.getElementById('zoneSelect');
+  zs.innerHTML = D.zones.map(z => '<option>' + esc(z.name) + '</option>').join('');
+  zs.value = S.zone;
+  zs.addEventListener('change', e => setZone(e.target.value));
+
+  const ys = document.getElementById('yearSelect');
+  ys.innerHTML = [...D.years].reverse().map(y => '<option value="' + y + '">' + y + '</option>').join('');
+  ys.value = S.year;
+  ys.addEventListener('change', e => { S.year = Number(e.target.value); S.month = 12; fitMonth(); render(); });
+
+  document.querySelectorAll('[data-param]').forEach(b => b.addEventListener('click', () => {
+    S.param = b.dataset.param; fitMonth();
+    document.querySelectorAll('[data-param]').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
+    render();
+  }));
+  document.querySelectorAll('[data-mode]').forEach(b => b.addEventListener('click', () => {
+    S.mode = b.dataset.mode;
+    document.querySelectorAll('[data-mode]').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
+    render();
+  }));
+
+  const range = document.getElementById('monthRange');
+  range.addEventListener('input', e => { S.month = Number(e.target.value); render(); });
+  const step = d => { S.month = Math.min(12, Math.max(1, S.month + d)); render(); };
+  document.getElementById('prevMonth').addEventListener('click', () => step(-1));
+  document.getElementById('nextMonth').addEventListener('click', () => step(1));
+}
+
+function render() {
+  document.getElementById('monthRange').value = S.month;
+  const has = monthsWithData(S.param, S.year).includes(S.month);
+  document.getElementById('monthLabel').textContent = MONTHS[S.month - 1] + ' ' + S.year + (has ? '' : ' (ไม่มีข้อมูล)');
+  renderReadout();
+  renderMap();
+  renderCharts();
+}
+
+/* ---------------- เริ่มทำงาน ---------------- */
+
+(async function start() {
+  const status = document.getElementById('status');
+  try {
+    if (typeof Papa === 'undefined' || typeof Chart === 'undefined' || typeof L === 'undefined') throw new Error('โหลดไลบรารีของเว็บไม่สำเร็จ ตรวจการเชื่อมต่ออินเทอร์เน็ตแล้วรีเฟรชหน้า');
+    const [db, settings, zones, content] = await Promise.allSettled(
+      [CONFIG.TABS.db, CONFIG.TABS.settings, CONFIG.TABS.zones, CONFIG.TABS.content].map(loadTab));
+    if (db.status === 'rejected') throw db.reason;
+    buildData(db.value, settings.value || [], zones.value || [], content.value || []);
+    if (!D.years.length) throw new Error('แท็บ WEB_DB ยังไม่มีข้อมูล ให้กดเมนู 🌊 เว็บไซต์ → อัปเดตข้อมูลเว็บ ใน Google Sheets');
+
+    const dy = num(D.settings.default_year);
+    S.year = D.years.includes(dy) ? dy : D.years[D.years.length - 1];
+    S.month = 12; fitMonth();
+
+    Chart.defaults.font.family = css('--sans');
+    Chart.defaults.color = css('--muted');
+
+    status.hidden = true;
+    document.getElementById('app').hidden = false;
+    renderStatic();
+    initControls();
+    initMap();
+    render();
+  } catch (err) {
+    status.classList.add('error');
+    status.textContent = err.message || String(err);
+    console.error(err);
+  }
+})();
+</script>
+</body>
+</html>
