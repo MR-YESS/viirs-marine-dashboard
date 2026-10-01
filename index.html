@@ -238,7 +238,7 @@
   <div class="wrap">
     <p><strong id="footTitle">ระบบติดตามสิ่งแวดล้อมทางทะเล</strong></p>
     <p id="footAuthor"></p>
-    <p>ข้อมูลดาวเทียม VIIRS (Suomi NPP / NOAA-20) แผนที่ฐาน © OpenStreetMap contributors © CARTO</p>
+    <p>ข้อมูลดาวเทียม VIIRS (Suomi NPP / NOAA-20) แผนที่ฐาน © Esri, GEBCO, NOAA, National Geographic</p>
   </div>
 </footer>
 
@@ -419,9 +419,11 @@ function colorFor(v) {
 
 function initMap() {
   map = L.map('map', { scrollWheelZoom: false, zoomSnap: 0.25, attributionControl: true });
-  L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
-    attribution: '© OpenStreetMap contributors © CARTO', subdomains: 'abcd', maxZoom: 12,
+  const esri = 'https://server.arcgisonline.com/ArcGIS/rest/services/Ocean/';
+  L.tileLayer(esri + 'World_Ocean_Base/MapServer/tile/{z}/{y}/{x}', {
+    attribution: 'แผนที่ฐาน © Esri, GEBCO, NOAA, National Geographic', maxZoom: 13,
   }).addTo(map);
+  L.tileLayer(esri + 'World_Ocean_Reference/MapServer/tile/{z}/{y}/{x}', { maxZoom: 13 }).addTo(map);
   const withBounds = D.zones.filter(z => z.bounds);
   const area = z => (z.bounds[1][0] - z.bounds[0][0]) * (z.bounds[1][1] - z.bounds[0][1]);
   withBounds.sort((a, b) => area(b) - area(a)).forEach(z => {
