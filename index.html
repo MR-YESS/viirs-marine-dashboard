@@ -158,7 +158,7 @@
   <div class="wrap">
     <p class="org" id="org"></p>
     <h1 id="siteTitle">ระบบติดตามสิ่งแวดล้อมทางทะเล</h1>
-    <p class="subtitle" id="siteSubtitle">อุณหภูมิผิวน้ำทะเล (SST) และคลอโรฟิลล์-เอ จากดาวเทียม VIIRS</p>
+    <p class="subtitle" id="siteSubtitle">ข้อมูลอุณหภูมิผิวน้ำทะเล (SST) และคลอโรฟิลล์-เอ (Chl-a) วิเคราะห์ประมวลผลจากภาพถ่ายดาวเทียม Suomi-NPP / NOAA-20 ระบบ VIIRS</p>
     <ul class="facts">
       <li>ข้อมูล <strong id="factRange">—</strong></li>
       <li>Climatology <strong id="factClim">—</strong></li>
@@ -210,7 +210,7 @@
           <div class="map-bar">
             <span id="mapViewLabel">มุมมอง</span>
             <div class="seg" role="group" aria-label="มุมมองแผนที่">
-              <button type="button" data-view="raster" aria-pressed="true">ภาพดาวเทียม</button>
+              <button type="button" data-view="raster" aria-pressed="true">ภาพถ่ายดาวเทียม Suomi-NPP / NOAA-20 ระบบ VIIRS แสดง</button>
               <button type="button" data-view="zones" aria-pressed="false">ค่าเฉลี่ยรายโซน</button>
             </div>
             <span class="map-note" id="mapNote" aria-live="polite"></span>
@@ -244,17 +244,17 @@
         <figure>
           <p class="fig-title" id="f3Title"></p>
           <div class="chart-box"><canvas id="chartAnomaly"></canvas></div>
-          <figcaption><strong>รูปที่ 3</strong> 12 เดือนย้อนหลังนับจากเดือนที่เลือก (เดือนที่เลือกอยู่ล่างสุด) แท่งสีแดงคือสูงกว่าค่า Climatology แท่งสีน้ำเงินคือต่ำกว่า เปลี่ยนเดือนได้จากแถบเลื่อนใต้แผนที่</figcaption>
+          <figcaption><strong>รูปที่ 3</strong> กราฟแสดงข้อมูล 12 เดือนล่าสุด แท่งสีแดงคือสูงกว่าค่า Climatology แท่งสีน้ำเงินคือต่ำกว่าค่า Climatology</figcaption>
         </figure>
         <figure>
           <p class="fig-title" id="f4Title"></p>
           <div class="chart-box"><canvas id="chartTrend"></canvas></div>
-          <figcaption><strong>รูปที่ 4</strong> จุดวงกลมคือค่าเฉลี่ยของปีที่มีข้อมูลครบ 12 เดือน สามเหลี่ยมคือปีที่ข้อมูลยังไม่ครบ เส้นแดงคือแนวโน้มเชิงเส้นจากปีที่ครบ <span class="stat-chip" id="f4Slope"></span></figcaption>
+          <figcaption><strong>รูปที่ 4</strong> กราฟแสดง แนวโน้มค่าเฉลี่ยรายปี ตั้งแต่ปี 2018 - ปัจจุบัน <span class="stat-chip" id="f4Slope"></span></figcaption>
         </figure>
         <figure class="wide">
           <p class="fig-title" id="f5Title"></p>
           <div class="chart-box"><canvas id="chartCompare"></canvas></div>
-          <figcaption><strong>รูปที่ 5</strong> 12 เดือนย้อนหลังนับจากเดือนที่เลือก แกนขวา (Chl-a) กลับด้าน ถ้าเส้นทั้งสองขึ้นลงไปด้วยกัน แปลว่าเมื่อน้ำอุ่นกว่าปกติ คลอโรฟิลล์มักต่ำกว่าปกติ <span class="stat-chip" id="f5Corr"></span></figcaption>
+          <figcaption><strong>รูปที่ 5</strong> กราฟแสดงข้อมูล 12 เดือนล่าสุด แกนขวา (Chl-a) กลับด้าน ถ้าเส้นทั้งสองขึ้นลงไปด้วยกัน แปลว่าเมื่อน้ำอุ่นกว่าปกติ คลอโรฟิลล์มักต่ำกว่าปกติ <span class="stat-chip" id="f5Corr"></span></figcaption>
         </figure>
       </div>
      </section>
@@ -270,7 +270,8 @@
   <div class="wrap">
     <p><strong id="footTitle">ระบบติดตามสิ่งแวดล้อมทางทะเล</strong></p>
     <p id="footAuthor"></p>
-    <p>ข้อมูลดาวเทียม VIIRS (Suomi NPP / NOAA-20) แผนที่ฐาน © OpenStreetMap contributors</p>
+    <p>ข้อมูลภาพถ่ายดาวเทียม Suomi-NPP / NOAA-20 ระบบ VIIRS</p> 
+    <p>แผนที่ฐาน © OpenStreetMap contributors</p>
   </div>
 </footer>
 
