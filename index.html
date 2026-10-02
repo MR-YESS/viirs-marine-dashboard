@@ -820,7 +820,7 @@ function renderCharts() {
       backgroundColor: an.map(v => v === null ? 'transparent' : v >= 0 ? warm : cool),
       borderColor: last12.map((r, i) => i === 11 ? navy : 'transparent'), borderWidth: last12.map((r, i) => i === 11 ? 2 : 0), borderRadius: 3 }] },
     options: baseOptions({ indexAxis: 'y', plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => c.parsed.x === null ? 'ไม่มีข้อมูล' : fmtS(c.parsed.x) + ' ' + u } } },
-      scales: { x: { title: { display: true, text: 'ค่าผิดปกติ (' + u + ')' }, grid: { color: c => c.tick.value === 0 ? navy : 'rgba(0,0,0,.06)' } },
+      scales: { x: { title: { display: true, text: 'ค่าเบี่ยงเบน (Anomaly) (' + u + ')' }, grid: { color: c => c.tick.value === 0 ? navy : 'rgba(0,0,0,.06)' } },
         y: { ticks: { font: c => ({ weight: c.index === 11 ? '600' : '400' }) } } } }) });
 
   // รูปที่ 4 แนวโน้มรายปี
