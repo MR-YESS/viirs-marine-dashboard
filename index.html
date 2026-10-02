@@ -178,7 +178,7 @@
     </div>
     <div class="seg" role="group" aria-label="รูปแบบค่า">
       <button type="button" data-mode="value" aria-pressed="true">ค่าที่วัดได้</button>
-      <button type="button" data-mode="anomaly" aria-pressed="false">ค่าผิดปกติ</button>
+      <button type="button" data-mode="anomaly" aria-pressed="false">ค่าเบี่ยงเบน</button>
     </div>
     <label class="field">พื้นที่ <select id="zoneSelect"></select></label>
     <label class="field">ปี <select id="yearSelect"></select></label>
@@ -202,7 +202,7 @@
           <div class="card"><div class="ico c-amber" id="icoAnom"></div><div><div class="num" id="roAnom">—</div><div class="lbl" id="lblAnom">Anomaly</div></div></div>
           <div class="card"><div class="ico c-red" id="icoMax"></div><div><div class="num" id="roMax">—</div><div class="lbl" id="lblMax">ค่าสูงสุดในพื้นที่</div><div class="sub" id="roMin"></div></div></div>
         </div>
-        <p class="hint">ค่าผิดปกติ (Anomaly) = ค่าที่วัดได้ − ค่า Climatology ของเดือนเดียวกัน ค่าบวกแปลว่าสูงกว่า ค่าลบแปลว่าต่ำกว่า</p>
+        <p class="hint">ค่าเบี่ยงเบน (Anomaly) = ค่าที่วัดได้ (Observed) − ค่า Climatology ของเดือนเดียวกัน ค่าบวกแปลว่าสูงกว่า ค่าลบแปลว่าต่ำกว่า</p>
       </div>
 
       <figure>
@@ -260,7 +260,7 @@
     </section>
 
     <section aria-labelledby="notesHead">
-      <div class="section-head"><h2 id="notesHead">ข้อมูลและระเบียบวิธี</h2></div>
+      <div class="section-head"><h2 id="notesHead"></h2></div> //ตัวอย่าง ข้อมูลและระเบียบวิธี
       <div class="notes" id="notes"></div>
     </section>
   </div>
@@ -328,8 +328,8 @@ const RASTER_OPACITY = 1;        // ความทึบของภาพด�
 const LEGEND = {
   sst:          { title: 'อุณหภูมิผิวน้ำทะเล SST (°C)',            ticks: [0, 10, 20, 30, 45] },
   chla:         { title: 'คลอโรฟิลล์-เอ Chl-a (ug/L)',              ticks: [0.01, 0.1, 1, 10, 20] },
-  sst_anomaly:  { title: 'ค่าผิดปกติ SST Anomaly (°C)',            ticks: [-5, -2.5, 0, 2.5, 5] },
-  chla_anomaly: { title: 'ค่าผิดปกติ Chl-a Anomaly (ug/L)',         ticks: [-20, -10, 0, 10, 20] },
+  sst_anomaly:  { title: 'ค่าเบี่ยงเบน SST Anomaly (°C)',            ticks: [-5, -2.5, 0, 2.5, 5] },
+  chla_anomaly: { title: 'ค่าเบี่ยงเบน Chl-a Anomaly (ug/L)',         ticks: [-20, -10, 0, 10, 20] },
 };
 
 const climLabel = () => TEXT.clim + ' ' + D.climStart + '–' + D.climEnd;
