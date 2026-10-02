@@ -32,7 +32,8 @@
   body { margin: 0; font-family: var(--sans); font-size: 16px; line-height: 1.65; color: var(--ink); background: var(--white); }
   a { color: var(--blue); }
   :focus-visible { outline: 3px solid var(--cyan); outline-offset: 2px; }
-  .wrap { width: min(1200px, 100% - 2.5rem); margin-inline: auto; }
+  .wrap { width: min(2400px, 100% - 4rem); margin-inline: auto; }
+  @media (max-width: 700px) { .wrap { width: calc(100% - 2rem); } }
 
   /* ---------- หัวเว็บ ---------- */
   .masthead { background: linear-gradient(160deg, var(--navy) 0%, var(--blue) 100%); color: var(--white); position: relative; padding: 2.75rem 0 4.5rem; }
@@ -57,7 +58,14 @@
   figure { margin: 0; }
   .map-box { position: relative; border: 1px solid var(--line); border-radius: 14px; overflow: hidden; background: var(--foam); }
   .map-stage { position: relative; }
-  #map { height: 560px; width: 100%; background: var(--foam); }
+  .map-bar { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem 1rem; padding: .6rem .9rem; border-bottom: 1px solid var(--line); background: var(--white); font-size: .92rem; color: var(--muted); }
+  .map-bar .seg button { padding: .25rem .8rem; font-size: .88rem; }
+  .map-note { margin-left: auto; font-size: .85rem; }
+  .map-note.warn { color: #9A4A00; }
+  .legend .ticks span { white-space: nowrap; }
+  .pixel-pop { font-family: var(--sans); font-size: .9rem; line-height: 1.5; }
+  .pixel-pop b { font-size: 1.05rem; color: var(--navy); }
+  #map { height: 620px; width: 100%; background: var(--foam); }
   .legend { position: absolute; left: 12px; bottom: 12px; z-index: 500; background: rgba(255,255,255,.94); border: 1px solid var(--line); border-radius: 10px; padding: .55rem .75rem; font-size: .8rem; color: var(--muted); min-width: 200px; }
   .legend .bar { height: 10px; border-radius: 5px; margin: .35rem 0 .2rem; }
   .legend .ticks { display: flex; justify-content: space-between; font-variant-numeric: tabular-nums; }
@@ -93,8 +101,8 @@
   .section-head p { margin: .35rem 0 0; color: var(--muted); max-width: 70ch; }
   .figs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 2.25rem 1.75rem; }
   .figs .wide { grid-column: 1 / -1; }
-  .chart-box { position: relative; height: 340px; border-top: 3px solid var(--blue); padding-top: .9rem; }
-  .figs .wide .chart-box { height: 380px; }
+  .chart-box { position: relative; height: 380px; border-top: 3px solid var(--blue); padding-top: .9rem; }
+  .figs .wide .chart-box { height: 440px; }
   .fig-title { font-weight: 600; margin: 0 0 .25rem; color: var(--navy); }
   .stat-chip { display: inline-block; margin-left: .35rem; padding: .05rem .55rem; border-radius: 999px; background: var(--foam); color: var(--blue); font-size: .85rem; font-weight: 500; }
 
@@ -137,7 +145,7 @@
     <p class="subtitle" id="siteSubtitle">อุณหภูมิผิวน้ำทะเล (SST) และคลอโรฟิลล์-เอ จากดาวเทียม VIIRS</p>
     <ul class="facts">
       <li>ข้อมูล <strong id="factRange">—</strong></li>
-      <li>ค่าปกติ <strong id="factClim">—</strong></li>
+      <li>Climatology <strong id="factClim">—</strong></li>
       <li>อัปเดตล่าสุด <strong id="factUpdated">—</strong></li>
     </ul>
   </div>
@@ -168,6 +176,14 @@
     <section class="overview" aria-label="แผนที่และสรุปค่า">
       <figure>
         <div class="map-box">
+          <div class="map-bar">
+            <span>มุมมอง</span>
+            <div class="seg" role="group" aria-label="มุมมองแผนที่">
+              <button type="button" data-view="raster" aria-pressed="true">ภาพดาวเทียม</button>
+              <button type="button" data-view="zones" aria-pressed="false">ค่าเฉลี่ยรายโซน</button>
+            </div>
+            <span class="map-note" id="mapNote" aria-live="polite"></span>
+          </div>
           <div class="map-stage">
             <div id="map" role="application" aria-label="แผนที่โซนทะเล คลิกโซนเพื่อดูรายละเอียด"></div>
             <div class="legend" id="legend"></div>
@@ -179,7 +195,7 @@
             <output id="monthLabel">—</output>
           </div>
         </div>
-        <figcaption><strong>รูปที่ 1</strong> <span id="mapCaption"></span> คลิกที่โซนบนแผนที่เพื่อดูรายละเอียดของโซนนั้น</figcaption>
+        <figcaption><strong>รูปที่ 1</strong> <span id="mapCaption"></span></figcaption>
       </figure>
 
       <aside class="readout" aria-live="polite">
@@ -190,11 +206,11 @@
         <p class="verdict" id="roVerdict"></p>
         <dl class="stats">
           <dt>ค่าที่วัดได้ (เฉลี่ย)</dt><dd id="roValue">—</dd>
-          <dt id="roClimLabel">ค่าปกติ</dt><dd id="roClim">—</dd>
+          <dt id="roClimLabel">ค่า Climatology</dt><dd id="roClim">—</dd>
           <dt>ค่าผิดปกติ (Anomaly)</dt><dd id="roAnom">—</dd>
           <dt id="roRangeLabel">ช่วงค่าในพื้นที่</dt><dd id="roRange">—</dd>
         </dl>
-        <p class="hint">ค่าผิดปกติ = ค่าที่วัดได้ − ค่าปกติของเดือนเดียวกัน ค่าบวกแปลว่าสูงกว่าปกติ ค่าลบแปลว่าต่ำกว่าปกติ</p>
+        <p class="hint">ค่าผิดปกติ (Anomaly) = ค่าที่วัดได้ − ค่า Climatology ของเดือนเดียวกัน ค่าบวกแปลว่าสูงกว่า ค่าลบแปลว่าต่ำกว่า</p>
       </aside>
     </section>
 
@@ -207,12 +223,12 @@
         <figure class="wide">
           <p class="fig-title" id="f2Title"></p>
           <div class="chart-box"><canvas id="chartMonthly"></canvas></div>
-          <figcaption><strong>รูปที่ 2</strong> เส้นน้ำเงินเข้มคือปีที่เลือก เส้นฟ้าจางคือปีอื่นสำหรับเปรียบเทียบ <span id="f2Extra"></span></figcaption>
+          <figcaption><strong>รูปที่ 2</strong> <span id="f2Extra"></span></figcaption>
         </figure>
         <figure>
           <p class="fig-title" id="f3Title"></p>
           <div class="chart-box"><canvas id="chartAnomaly"></canvas></div>
-          <figcaption><strong>รูปที่ 3</strong> แท่งสีแดงคือเดือนที่สูงกว่าปกติ แท่งสีน้ำเงินคือเดือนที่ต่ำกว่าปกติ</figcaption>
+          <figcaption><strong>รูปที่ 3</strong> 12 เดือนย้อนหลังนับจากเดือนที่เลือก (เดือนที่เลือกอยู่ล่างสุด) แท่งสีแดงคือสูงกว่าค่า Climatology แท่งสีน้ำเงินคือต่ำกว่า เปลี่ยนเดือนได้จากแถบเลื่อนใต้แผนที่</figcaption>
         </figure>
         <figure>
           <p class="fig-title" id="f4Title"></p>
@@ -245,6 +261,7 @@
 <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/geotiff@2.1.3/dist-browser/geotiff.js"></script>
 <script>
 /* =====================================================================
    ตั้งค่า: ถ้าเปลี่ยนไปใช้ Google Sheet ไฟล์อื่น แก้แค่ SHEET_ID ตรงนี้
@@ -255,7 +272,31 @@ const CONFIG = {
   TABS: { db: 'WEB_DB', settings: 'WEB_Settings', zones: 'WEB_Zones', content: 'WEB_Content' },
   OVERALL: 'ภาพรวม',
   MAP_BOUNDS: [[5.6, 96.9], [14.0, 103.0]],
+  // ภาพดาวเทียม: rasters/<ชนิด>/<ชนิด>_ปี_เดือน.tif และสีจาก styles/<ชนิด>.sld
+  RASTER_DIR: 'rasters',
+  STYLE_DIR: 'styles',
 };
+
+/* =====================================================================
+   ข้อความหัวกราฟและคำเรียกค่าต่าง ๆ: แก้ข้อความในเครื่องหมาย '...' ได้เลย
+   ===================================================================== */
+const TEXT = {
+  clim: 'ค่า Climatology',                                                    // ต่อท้ายด้วยช่วงปีอัตโนมัติ เช่น 2018–2025
+  fig2_value: 'การเปลี่ยนแปลงค่าเฉลี่ยรายเดือน (Monthly Mean Time Series)',      // รูปที่ 2 เมื่อเลือก "ค่าที่วัดได้"
+  fig2_anomaly: 'การเปลี่ยนแปลงค่าผิดปกติรายเดือน (Monthly Anomaly Time Series)', // รูปที่ 2 เมื่อเลือก "ค่าผิดปกติ"
+  fig3: 'ค่าผิดปกติรายเดือน 12 เดือนล่าสุด',                                    // รูปที่ 3 (ช่วงเดือนต่อท้ายอัตโนมัติ)
+  fig4_value: 'ค่าเฉลี่ยรายปี',                                                  // รูปที่ 4 เมื่อเลือก "ค่าที่วัดได้"
+  fig4_anomaly: 'ค่าผิดปกติเฉลี่ยรายปี',                                          // รูปที่ 4 เมื่อเลือก "ค่าผิดปกติ"
+  fig5: 'ค่าผิดปกติของ SST เทียบกับ Chl-a รายเดือน',                             // รูปที่ 5
+};
+
+// สีเส้นของแต่ละปีในรูปที่ 2 (ปีที่ไม่อยู่ในรายการจะได้สีอัตโนมัติ)
+const YEAR_COLORS = {
+  2026: '#D62828', 2025: '#1F5FA8', 2024: '#2A9D8F', 2023: '#F4A261', 2022: '#7B2CBF',
+  2021: '#6A994E', 2020: '#E76F51', 2019: '#8D99AE', 2018: '#B5838D',
+};
+const yearColor = y => YEAR_COLORS[y] || 'hsl(' + ((y * 67) % 360) + ', 60%, 45%)';
+const climLabel = () => TEXT.clim + ' ' + D.climStart + '–' + D.climEnd;
 
 const MONTHS = ['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน','กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
 const MONTHS_SHORT = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
@@ -265,7 +306,7 @@ const PARAMS = {
 };
 const CONTENT_ORDER = ['about', 'methodology', 'data_source', 'limitations', 'references'];
 
-const S = { param: 'SST', mode: 'value', zone: CONFIG.OVERALL, year: null, month: 1 };
+const S = { param: 'SST', mode: 'value', zone: CONFIG.OVERALL, year: null, month: 1, view: 'raster' };
 const D = { index: new Map(), clim: new Map(), years: [], zones: [], settings: {}, content: [], climStart: null, climEnd: null };
 const charts = {};
 const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
@@ -423,7 +464,11 @@ function initMap() {
   L.tileLayer(esri + 'World_Ocean_Base/MapServer/tile/{z}/{y}/{x}', {
     attribution: 'แผนที่ฐาน © Esri, GEBCO, NOAA, National Geographic', maxZoom: 13,
   }).addTo(map);
-  L.tileLayer(esri + 'World_Ocean_Reference/MapServer/tile/{z}/{y}/{x}', { maxZoom: 13 }).addTo(map);
+  map.createPane('rasterPane').style.zIndex = 350;
+  map.createPane('labelPane').style.zIndex = 380;
+  map.getPane('labelPane').style.pointerEvents = 'none';
+  L.tileLayer(esri + 'World_Ocean_Reference/MapServer/tile/{z}/{y}/{x}', { maxZoom: 13, pane: 'labelPane' }).addTo(map);
+  map.on('click', e => showPixel(e.latlng));
   const withBounds = D.zones.filter(z => z.bounds);
   const area = z => (z.bounds[1][0] - z.bounds[0][0]) * (z.bounds[1][1] - z.bounds[0][1]);
   withBounds.sort((a, b) => area(b) - area(a)).forEach(z => {
@@ -445,29 +490,169 @@ function styleZone(name) {
   l.rect.setStyle({ weight: sel ? 3.5 : 1.2, color: sel ? '#0A2E4D' : '#3A5B75', dashArray: sel ? null : '' });
 }
 
-function renderMap() {
+function renderMap(skipRaster) {
   const d = 2;
+  const rasterOn = S.view === 'raster' && R.current && !R.missing;
   Object.entries(zoneLayers).forEach(([name, l]) => {
     const v = metric(S.mode, S.param, name, S.year, S.month);
-    l.rect.setStyle({ fillColor: colorFor(v) });
+    l.rect.setStyle({ fillColor: colorFor(v), fillOpacity: rasterOn ? 0 : 0.78 });
     styleZone(name);
     if (name === S.zone) l.rect.bringToFront();
     const val = v === null ? 'ไม่มีข้อมูล' : (S.mode === 'anomaly' ? fmtS(v, d) : fmt(v, d));
-    // โซนเล็กแสดงแค่ตัวเลข ชื่อโซนดูได้จากการชี้เมาส์
-    l.label.setIcon(L.divIcon({ className: 'zone-label', iconSize: [0, 0], html: '<div>' + (l.small ? '' : esc(name)) + '<b>' + val + '</b></div>' }));
-    l.rect.setTooltipContent(esc(name) + ': ' + val + (v === null ? '' : ' ' + esc(unit())));
+    // โซนเล็กแสดงแค่ตัวเลข ชื่อโซนดูได้จากการชี้เมาส์ / มุมมองภาพดาวเทียมซ่อนป้ายเพื่อไม่ให้บังภาพ
+    l.label.setIcon(L.divIcon({ className: 'zone-label', iconSize: [0, 0], html: rasterOn ? '' : '<div>' + (l.small ? '' : esc(name)) + '<b>' + val + '</b></div>' }));
+    l.rect.setTooltipContent(esc(name) + ' ค่าเฉลี่ยโซน: ' + val + (v === null ? '' : ' ' + esc(unit())));
   });
-  const [lo, hi] = domain(S.param, S.mode);
-  const stops = S.mode === 'anomaly' ? RAMP_ANOM : RAMP_VALUE;
-  const mid = (lo + hi) / 2;
-  const f = v => S.mode === 'anomaly' ? fmtS(v, 2) : fmt(v, 2);
-  document.getElementById('legend').innerHTML =
-    (S.mode === 'anomaly' ? 'ค่าผิดปกติ' : 'ค่าที่วัดได้') + ' ' + PARAMS[S.param].short + ' (' + esc(unit()) + ')' +
-    '<div class="bar" style="background:linear-gradient(90deg,' + stops.join(',') + ')"></div>' +
-    '<div class="ticks"><span>' + f(lo) + '</span><span>' + f(mid) + '</span><span>' + f(hi) + '</span></div>';
-  document.getElementById('mapCaption').textContent =
-    (S.mode === 'anomaly' ? 'ค่าผิดปกติ' : 'ค่าเฉลี่ย') + PARAMS[S.param].name + ' รายโซน เดือน' + MONTHS[S.month - 1] + ' ' + S.year +
-    (S.mode === 'anomaly' ? ' สีแดงคือสูงกว่าปกติ สีน้ำเงินคือต่ำกว่าปกติ' : '');
+  const what = (S.mode === 'anomaly' ? 'ค่าผิดปกติ' : 'ค่า') + PARAMS[S.param].name;
+  const when = ' เดือน' + MONTHS[S.month - 1] + ' ' + S.year;
+  if (rasterOn) {
+    renderSldLegend(R.current.style);
+    document.getElementById('mapCaption').textContent = 'ภาพดาวเทียม' + what + when + ' คลิกจุดใดก็ได้บนแผนที่เพื่อดูค่าของจุดนั้น เส้นกรอบคือขอบเขตโซน คลิกในกรอบเพื่อเลือกโซน';
+  } else {
+    const [lo, hi] = domain(S.param, S.mode);
+    const stops = S.mode === 'anomaly' ? RAMP_ANOM : RAMP_VALUE;
+    const f = v => S.mode === 'anomaly' ? fmtS(v, 2) : fmt(v, 2);
+    document.getElementById('legend').innerHTML =
+      (S.mode === 'anomaly' ? 'ค่าผิดปกติ' : 'ค่าที่วัดได้') + ' ' + PARAMS[S.param].short + ' (' + esc(unit()) + ')' +
+      '<div class="bar" style="background:linear-gradient(90deg,' + stops.join(',') + ')"></div>' +
+      '<div class="ticks"><span>' + f(lo) + '</span><span>' + f((lo + hi) / 2) + '</span><span>' + f(hi) + '</span></div>';
+    document.getElementById('mapCaption').textContent = 'ค่าเฉลี่ย' + what.replace(/^ค่า(?!ผิด)/, '') + ' รายโซน' + when +
+      (S.mode === 'anomaly' ? ' สีแดงคือสูงกว่าค่า Climatology สีน้ำเงินคือต่ำกว่า' : '') + ' คลิกโซนบนแผนที่เพื่อดูรายละเอียด';
+  }
+  if (skipRaster) return;
+  if (S.view === 'raster') updateRaster();
+  else if (S.view === 'zones') { if (R.overlay) R.overlay.remove(); R.overlay = null; R.overlayUrl = null; setNote(''); }
+}
+
+/* ---------------- ภาพดาวเทียม GeoTIFF + สีจาก SLD ---------------- */
+
+const R = { cache: new Map(), styles: new Map(), overlay: null, overlayUrl: null, current: null, missing: false, token: 0 };
+const layerId = () => (S.param === 'SST' ? 'sst' : 'chla') + (S.mode === 'anomaly' ? '_anomaly' : '');
+const rasterUrl = (id, y, m) => CONFIG.RASTER_DIR + '/' + id + '/' + id + '_' + y + '_' + String(m).padStart(2, '0') + '.tif';
+const setNote = (t, warn) => { const n = document.getElementById('mapNote'); n.textContent = t; n.className = 'map-note' + (warn ? ' warn' : ''); };
+
+function parseSld(xml) {
+  if (!xml) return null;
+  const doc = new DOMParser().parseFromString(xml, 'application/xml');
+  const cm = doc.getElementsByTagNameNS('*', 'ColorMap')[0];
+  const entries = [...doc.getElementsByTagNameNS('*', 'ColorMapEntry')].map(e => ({
+    q: parseFloat(e.getAttribute('quantity')), color: e.getAttribute('color'),
+    rgb: hex2rgb(e.getAttribute('color') || '#000000'),
+    a: e.hasAttribute('opacity') ? parseFloat(e.getAttribute('opacity')) : 1,
+    label: e.getAttribute('label') || e.getAttribute('quantity'),
+  })).filter(e => Number.isFinite(e.q)).sort((a, b) => a.q - b.q);
+  return entries.length ? { type: ((cm && cm.getAttribute('type')) || 'ramp').toLowerCase(), entries } : null;
+}
+
+function loadStyle(id) {
+  if (!R.styles.has(id)) {
+    R.styles.set(id, fetch(CONFIG.STYLE_DIR + '/' + id + '.sld').then(r => r.ok ? r.text() : null).then(parseSld).catch(() => null));
+  }
+  return R.styles.get(id);
+}
+
+// คืนค่า [r, g, b, alpha 0–255] ตามกติกา SLD (ramp / intervals / values)
+function sldColor(st, v) {
+  const e = st.entries, n = e.length;
+  const pack = (x, a) => [x[0], x[1], x[2], Math.round(a * 255)];
+  if (st.type === 'values') { const hit = e.find(x => Math.abs(x.q - v) < 1e-6); return hit ? pack(hit.rgb, hit.a) : null; }
+  if (st.type === 'intervals') { const hit = e.find(x => v < x.q); return hit ? pack(hit.rgb, hit.a) : pack(e[n - 1].rgb, e[n - 1].a); }
+  if (v <= e[0].q) return pack(e[0].rgb, e[0].a);
+  if (v >= e[n - 1].q) return pack(e[n - 1].rgb, e[n - 1].a);
+  let i = 0; while (i < n - 2 && v >= e[i + 1].q) i++;
+  const t = (v - e[i].q) / (e[i + 1].q - e[i].q || 1);
+  return pack(e[i].rgb.map((c, j) => c + (e[i + 1].rgb[j] - c) * t), e[i].a + (e[i + 1].a - e[i].a) * t);
+}
+
+function loadRaster(url) {
+  if (!R.cache.has(url)) {
+    R.cache.set(url, (async () => {
+      const res = await fetch(url);
+      if (!res.ok) return null;
+      const tiff = await GeoTIFF.fromArrayBuffer(await res.arrayBuffer());
+      const img = await tiff.getImage();
+      const [data] = await img.readRasters();
+      const [x0, y0, x1, y1] = img.getBoundingBox();
+      return { data, w: img.getWidth(), h: img.getHeight(), x0, y0, x1, y1, nodata: img.getGDALNoData() };
+    })().catch(err => { console.warn('อ่านภาพไม่ได้', url, err); return null; }));
+  }
+  return R.cache.get(url);
+}
+
+const validPx = (v, nd) => Number.isFinite(v) && (nd === null || nd === undefined || v !== nd) && v > -9998;
+const merc = lat => Math.log(Math.tan(Math.PI / 4 + lat * Math.PI / 360));
+const invMerc = y => (2 * Math.atan(Math.exp(y)) - Math.PI / 2) * 180 / Math.PI;
+
+// วาดภาพลง canvas โดยแปลงแถวจากพิกัด lat/lon เป็น Web Mercator ให้ตรงกับแผนที่ฐาน
+function rasterToDataUrl(r, st) {
+  const c = document.createElement('canvas'); c.width = r.w; c.height = r.h;
+  const ctx = c.getContext('2d'), out = ctx.createImageData(r.w, r.h);
+  const top = merc(r.y1), bottom = merc(r.y0), resY = (r.y1 - r.y0) / r.h;
+  for (let j = 0; j < r.h; j++) {
+    const lat = invMerc(top + (bottom - top) * (j + 0.5) / r.h);
+    const sj = Math.min(r.h - 1, Math.max(0, Math.floor((r.y1 - lat) / resY)));
+    for (let i = 0; i < r.w; i++) {
+      const v = r.data[sj * r.w + i];
+      if (!validPx(v, r.nodata)) continue;
+      const col = st ? sldColor(st, v) : (() => { const h = hex2rgb(colorFor(v)); return [h[0], h[1], h[2], 255]; })();
+      if (!col) continue;
+      const o = (j * r.w + i) * 4;
+      out.data[o] = col[0]; out.data[o + 1] = col[1]; out.data[o + 2] = col[2]; out.data[o + 3] = col[3];
+    }
+  }
+  ctx.putImageData(out, 0, 0);
+  return c.toDataURL();
+}
+
+async function updateRaster() {
+  const id = layerId(), url = rasterUrl(id, S.year, S.month), token = ++R.token;
+  if (R.overlayUrl === url && R.current) return;
+  setNote('กำลังโหลดภาพดาวเทียม…');
+  const [r, st] = await Promise.all([loadRaster(url), loadStyle(id)]);
+  if (token !== R.token) return; // ผู้ใช้เปลี่ยนตัวเลือกไปแล้ว
+  if (!r) {
+    if (R.overlay) R.overlay.remove();
+    R.overlay = null; R.overlayUrl = null; R.current = null; R.missing = true;
+    setNote('ไม่มีภาพดาวเทียมเดือนนี้ แสดงค่าเฉลี่ยรายโซนแทน', true);
+    renderMapZonesOnly();
+    return;
+  }
+  const bounds = [[r.y0, r.x0], [r.y1, r.x1]];
+  const img = rasterToDataUrl(r, st);
+  if (R.overlay) R.overlay.setUrl(img).setBounds(L.latLngBounds(bounds));
+  else R.overlay = L.imageOverlay(img, bounds, { pane: 'rasterPane', opacity: 0.92, interactive: false }).addTo(map);
+  const wasMissing = R.missing || !R.current;
+  R.current = { r, style: st, id }; R.overlayUrl = url; R.missing = false;
+  setNote(st ? '' : 'ไม่พบไฟล์สี ' + id + '.sld ใช้สีมาตรฐานของเว็บแทน', !st);
+  if (wasMissing) renderMapZonesOnly(); else renderSldLegend(st);
+}
+
+// วาดส่วนโซน/คำอธิบายใหม่โดยไม่โหลดภาพซ้ำ
+function renderMapZonesOnly() { renderMap(true); }
+
+function renderSldLegend(st) {
+  const leg = document.getElementById('legend');
+  const title = 'ภาพดาวเทียม ' + (S.mode === 'anomaly' ? 'ค่าผิดปกติ ' : '') + PARAMS[S.param].short + ' (' + esc(unit()) + ')';
+  if (!st) { leg.innerHTML = title; return; }
+  const e = st.entries.filter(x => x.a > 0);
+  const n = e.length, pick = [0, Math.round((n - 1) / 4), Math.round((n - 1) / 2), Math.round(3 * (n - 1) / 4), n - 1];
+  const tick = q => Math.abs(q) >= 10 ? String(Math.round(q * 10) / 10) : String(Math.round(q * 100) / 100);
+  leg.innerHTML = title + '<div class="bar" style="background:linear-gradient(90deg,' + e.map(x => x.color).join(',') + ')"></div>' +
+    '<div class="ticks">' + [...new Set(pick)].map(i => '<span>' + tick(e[i].q) + '</span>').join('') + '</div>';
+}
+
+function showPixel(latlng) {
+  if (S.view !== 'raster' || !R.current || R.missing) return;
+  const r = R.current.r;
+  const i = Math.floor((latlng.lng - r.x0) / ((r.x1 - r.x0) / r.w)), j = Math.floor((r.y1 - latlng.lat) / ((r.y1 - r.y0) / r.h));
+  let txt = 'นอกขอบเขตภาพ';
+  if (i >= 0 && j >= 0 && i < r.w && j < r.h) {
+    const v = r.data[j * r.w + i];
+    txt = validPx(v, r.nodata) ? '<b>' + (S.mode === 'anomaly' ? fmtS(v) : fmt(v)) + ' ' + esc(unit()) + '</b>' : 'ไม่มีค่า (พื้นดินหรือเมฆ)';
+  }
+  L.popup({ className: 'pixel-pop' }).setLatLng(latlng).setContent(
+    '<div class="pixel-pop">' + (S.mode === 'anomaly' ? 'ค่าผิดปกติ ' : '') + PARAMS[S.param].short + ': ' + txt +
+    '<br>Lat ' + latlng.lat.toFixed(3) + ', Lon ' + latlng.lng.toFixed(3) + '</div>').openOn(map);
 }
 
 /* ---------------- กล่องสรุปค่า ---------------- */
@@ -482,7 +667,7 @@ function renderReadout() {
   document.getElementById('roBig').innerHTML = (S.mode === 'anomaly' ? fmtS(bigV) : fmt(bigV)) + '<small>' + esc(u) + '</small>';
   document.getElementById('roBigLabel').textContent = S.mode === 'anomaly' ? 'ค่าผิดปกติเฉลี่ยของโซน' : 'ค่าเฉลี่ยของโซน';
   document.getElementById('roValue').textContent = val ? fmt(val.mean) + ' ' + u : '—';
-  document.getElementById('roClimLabel').textContent = 'ค่าปกติ (เฉลี่ย ' + D.climStart + '–' + D.climEnd + ')';
+  document.getElementById('roClimLabel').textContent = climLabel();
   document.getElementById('roClim').textContent = cl !== null ? fmt(cl) + ' ' + u : '—';
   document.getElementById('roAnom').textContent = an ? fmtS(an.mean) + ' ' + u : '—';
   const rr = S.mode === 'anomaly' ? an : val;
@@ -492,11 +677,11 @@ function renderReadout() {
   const v = document.getElementById('roVerdict');
   v.className = 'verdict';
   if (!an || an.mean === null) { v.textContent = 'ยังไม่มีค่าผิดปกติของเดือนนี้'; }
-  else if (Math.abs(an.mean) < PARAMS[p].near) { v.textContent = 'ใกล้เคียงค่าปกติของเดือน' + MONTHS[m - 1]; }
+  else if (Math.abs(an.mean) < PARAMS[p].near) { v.textContent = 'ใกล้เคียง' + TEXT.clim + 'ของเดือน' + MONTHS[m - 1]; }
   else {
     const up = an.mean > 0;
     v.classList.add(up ? 'up' : 'down');
-    v.textContent = (up ? 'สูงกว่า' : 'ต่ำกว่า') + 'ค่าปกติ ' + fmt(Math.abs(an.mean)) + ' ' + u;
+    v.textContent = (up ? 'สูงกว่า' : 'ต่ำกว่า') + TEXT.clim + ' ' + fmt(Math.abs(an.mean)) + ' ' + u;
   }
 }
 
@@ -520,33 +705,43 @@ function renderCharts() {
   const label = mode === 'anomaly' ? 'ค่าผิดปกติ' : 'ค่าที่วัดได้';
   document.getElementById('chartsIntro').textContent = PARAMS[p].name + ' · ' + z + ' · หน่วย ' + u;
 
-  // รูปที่ 2 อนุกรมเวลารายเดือน
-  document.getElementById('f2Title').textContent = label + 'รายเดือน แยกตามปี';
-  const ds2 = D.years.map(y => {
-    const sel = y === S.year;
-    return { label: String(y), data: MONTHS.map((_, i) => metric(mode, p, z, y, i + 1)), borderColor: sel ? blue : 'rgba(79,179,217,.32)', backgroundColor: sel ? blue : 'rgba(79,179,217,.32)', borderWidth: sel ? 3 : 1.2, pointRadius: sel ? 3.5 : 0, tension: .3, order: sel ? 0 : 3 };
+  // รูปที่ 2 อนุกรมเวลารายเดือน: 1 ปี 1 สี คลิกชื่อปีในคำอธิบายเพื่อซ่อน/แสดง
+  document.getElementById('f2Title').textContent = mode === 'anomaly' ? TEXT.fig2_anomaly : TEXT.fig2_value;
+  const ds2 = [...D.years].reverse().map(y => {
+    const sel = y === S.year, col = yearColor(y);
+    return { label: String(y), data: MONTHS.map((_, i) => metric(mode, p, z, y, i + 1)), borderColor: col, backgroundColor: col,
+      borderWidth: sel ? 3.5 : 1.6, pointRadius: sel ? 4 : 2, pointHoverRadius: 6, tension: .3, order: sel ? 0 : 3 };
   });
   if (mode === 'value') {
-    ds2.push({ label: 'ค่าปกติ ' + D.climStart + '–' + D.climEnd, data: MONTHS.map((_, i) => climOf(p, z, i + 1)), borderColor: navy, backgroundColor: navy, borderDash: [6, 4], borderWidth: 2, pointRadius: 0, tension: .3, order: 1 });
-    document.getElementById('f2Extra').textContent = 'เส้นประคือค่าปกติ ถ้าเส้นปีที่เลือกอยู่เหนือเส้นประ แปลว่าเดือนนั้นสูงกว่าปกติ';
+    ds2.push({ label: climLabel(), data: MONTHS.map((_, i) => climOf(p, z, i + 1)), borderColor: '#111111', backgroundColor: '#111111', borderDash: [7, 5], borderWidth: 2.5, pointRadius: 0, tension: .3, order: 1 });
+    document.getElementById('f2Extra').textContent = 'แต่ละปีมีสีของตัวเอง เส้นหนาคือปีที่เลือก เส้นประสีดำคือ' + climLabel() + ' คลิกชื่อปีด้านบนกราฟเพื่อซ่อนหรือแสดงเส้นของปีนั้น';
   } else {
-    ds2.push({ label: 'ค่าปกติ (0)', data: MONTHS.map(() => 0), borderColor: navy, backgroundColor: navy, borderDash: [6, 4], borderWidth: 1.5, pointRadius: 0, order: 1 });
-    document.getElementById('f2Extra').textContent = 'เส้นประคือศูนย์ (เท่ากับค่าปกติ)';
+    ds2.push({ label: TEXT.clim + ' (0)', data: MONTHS.map(() => 0), borderColor: '#111111', backgroundColor: '#111111', borderDash: [7, 5], borderWidth: 1.5, pointRadius: 0, order: 1 });
+    document.getElementById('f2Extra').textContent = 'แต่ละปีมีสีของตัวเอง เส้นหนาคือปีที่เลือก เส้นประคือศูนย์ (เท่ากับค่า Climatology) คลิกชื่อปีด้านบนกราฟเพื่อซ่อนหรือแสดงเส้น';
   }
   draw('chartMonthly', { type: 'line', data: { labels: MONTHS_SHORT, datasets: ds2 }, options: baseOptions({
-    plugins: { legend: { labels: { boxWidth: 14, filter: it => it.text === String(S.year) || it.text.startsWith('ค่าปกติ') } },
+    plugins: { legend: { position: 'top', labels: { boxWidth: 22, boxHeight: 3, padding: 14, usePointStyle: false, sort: (a, b) => a.datasetIndex - b.datasetIndex } },
       tooltip: { callbacks: { label: c => c.dataset.label + ': ' + (mode === 'anomaly' ? fmtS(c.parsed.y) : fmt(c.parsed.y)) + ' ' + u } } },
     scales: { y: { title: { display: true, text: label + ' (' + u + ')' } } } }) });
 
-  // รูปที่ 3 ค่าผิดปกติรายเดือนของปีที่เลือก
-  document.getElementById('f3Title').textContent = 'ค่าผิดปกติรายเดือน ปี ' + S.year;
-  const an = MONTHS.map((_, i) => metric('anomaly', p, z, S.year, i + 1));
-  draw('chartAnomaly', { type: 'bar', data: { labels: MONTHS_SHORT, datasets: [{ label: 'ค่าผิดปกติ', data: an, backgroundColor: an.map(v => v === null ? 'transparent' : v >= 0 ? warm : cool), borderRadius: 3 }] },
-    options: baseOptions({ indexAxis: 'y', plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => fmtS(c.parsed.x) + ' ' + u } } },
-      scales: { x: { title: { display: true, text: 'ค่าผิดปกติ (' + u + ')' }, grid: { color: c => c.tick.value === 0 ? navy : 'rgba(0,0,0,.06)' } }, y: { reverse: false } } }) });
+  // รูปที่ 3 ค่าผิดปกติ 12 เดือนย้อนหลังนับจากเดือนที่เลือก (เดือนที่เลือกอยู่ล่างสุด)
+  const last12 = [];
+  for (let back = 11; back >= 0; back--) {
+    const t = S.year * 12 + (S.month - 1) - back, yy = Math.floor(t / 12), mm = t % 12 + 1;
+    last12.push({ y: yy, m: mm, v: metric('anomaly', p, z, yy, mm) });
+  }
+  const f = last12[0], l = last12[11];
+  document.getElementById('f3Title').textContent = TEXT.fig3 + ' (' + MONTHS_SHORT[f.m - 1] + ' ' + f.y + ' – ' + MONTHS_SHORT[l.m - 1] + ' ' + l.y + ')';
+  const an = last12.map(r => r.v);
+  draw('chartAnomaly', { type: 'bar', data: { labels: last12.map(r => MONTHS_SHORT[r.m - 1] + ' ' + r.y), datasets: [{ label: 'ค่าผิดปกติ', data: an,
+      backgroundColor: an.map(v => v === null ? 'transparent' : v >= 0 ? warm : cool),
+      borderColor: last12.map((r, i) => i === 11 ? navy : 'transparent'), borderWidth: last12.map((r, i) => i === 11 ? 2 : 0), borderRadius: 3 }] },
+    options: baseOptions({ indexAxis: 'y', plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => c.parsed.x === null ? 'ไม่มีข้อมูล' : fmtS(c.parsed.x) + ' ' + u } } },
+      scales: { x: { title: { display: true, text: 'ค่าผิดปกติ (' + u + ')' }, grid: { color: c => c.tick.value === 0 ? navy : 'rgba(0,0,0,.06)' } },
+        y: { ticks: { font: c => ({ weight: c.index === 11 ? '600' : '400' }) } } } }) });
 
   // รูปที่ 4 แนวโน้มรายปี
-  document.getElementById('f4Title').textContent = label + 'เฉลี่ยรายปี';
+  document.getElementById('f4Title').textContent = mode === 'anomaly' ? TEXT.fig4_anomaly : TEXT.fig4_value;
   const yearly = D.years.map(y => {
     const v = []; for (let m = 1; m <= 12; m++) { const x = metric(mode, p, z, y, m); if (x !== null) v.push(x); }
     return { y, mean: v.length ? avg(v) : null, full: v.length === 12 };
@@ -562,7 +757,7 @@ function renderCharts() {
     scales: { y: { title: { display: true, text: u } } } }) });
 
   // รูปที่ 5 เปรียบเทียบ SST กับ Chl-a anomaly
-  document.getElementById('f5Title').textContent = 'ค่าผิดปกติของ SST เทียบกับ Chl-a รายเดือน';
+  document.getElementById('f5Title').textContent = TEXT.fig5;
   const labels = [], sst = [], chl = [], px = [], py = [];
   D.years.forEach(y => { for (let m = 1; m <= 12; m++) {
     const a = metric('anomaly', 'SST', z, y, m), b = metric('anomaly', 'CHLA', z, y, m);
@@ -647,6 +842,13 @@ function initControls() {
     render();
   }));
 
+  document.querySelectorAll('[data-view]').forEach(b => b.addEventListener('click', () => {
+    S.view = b.dataset.view; map.closePopup();
+    document.querySelectorAll('[data-view]').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
+    R.overlayUrl = null; R.missing = false;
+    render();
+  }));
+
   const range = document.getElementById('monthRange');
   range.addEventListener('input', e => { S.month = Number(e.target.value); render(); });
   const step = d => { S.month = Math.min(12, Math.max(1, S.month + d)); render(); };
@@ -668,7 +870,7 @@ function render() {
 (async function start() {
   const status = document.getElementById('status');
   try {
-    if (typeof Papa === 'undefined' || typeof Chart === 'undefined' || typeof L === 'undefined') throw new Error('โหลดไลบรารีของเว็บไม่สำเร็จ ตรวจการเชื่อมต่ออินเทอร์เน็ตแล้วรีเฟรชหน้า');
+    if (typeof Papa === 'undefined' || typeof Chart === 'undefined' || typeof L === 'undefined' || typeof GeoTIFF === 'undefined') throw new Error('โหลดไลบรารีของเว็บไม่สำเร็จ ตรวจการเชื่อมต่ออินเทอร์เน็ตแล้วรีเฟรชหน้า');
     const [db, settings, zones, content] = await Promise.allSettled(
       [CONFIG.TABS.db, CONFIG.TABS.settings, CONFIG.TABS.zones, CONFIG.TABS.content].map(loadTab));
     if (db.status === 'rejected') throw db.reason;
