@@ -301,14 +301,9 @@
           <figcaption><strong>รูปที่ 7</strong> จุดละ 1 เดือน แยกตามฤดู: มรสุมตะวันออกเฉียงเหนือ (พ.ย.–ก.พ.) มรสุมตะวันตกเฉียงใต้ (พ.ค.–ก.ย.) ช่วงเปลี่ยนฤดู (มี.ค.–เม.ย., ต.ค.) เส้นประคือแนวโน้มรวม จุดขอบดำคือเดือนที่เลือก <span class="stat-chip" id="f7Corr"></span></figcaption>
         </figure>
         <figure>
-          <p class="fig-title" id="f8Title"></p>
-          <div class="chart-box"><canvas id="chartRate"></canvas></div>
-          <figcaption><strong>รูปที่ 8</strong> ความชันของเส้นแนวโน้มค่าเฉลี่ยรายปี คิดเฉพาะปีที่มีข้อมูลครบ 12 เดือน แท่งที่มีกรอบคือพื้นที่ที่เลือก</figcaption>
-        </figure>
-        <figure class="wide">
           <p class="fig-title" id="f9Title"></p>
           <div class="chart-box"><canvas id="chartCompare"></canvas></div>
-          <figcaption><strong>รูปที่ 9</strong> กราฟแสดงข้อมูล 12 เดือนล่าสุด แกนขวา (Chl-a) กลับด้าน ถ้าเส้นทั้งสองขึ้นลงไปด้วยกัน แปลว่าเมื่อน้ำอุ่นกว่าปกติ คลอโรฟิลล์มักต่ำกว่าปกติ <span class="stat-chip" id="f9Corr"></span></figcaption>
+          <figcaption><strong>รูปที่ 8</strong> กราฟแสดงข้อมูล 12 เดือนล่าสุด แกนขวา (Chl-a) กลับด้าน ถ้าเส้นทั้งสองขึ้นลงไปด้วยกัน แปลว่าเมื่อน้ำอุ่นกว่าปกติ คลอโรฟิลล์มักต่ำกว่าปกติ <span class="stat-chip" id="f9Corr"></span></figcaption>
         </figure>
       </div>
     </section>
@@ -364,8 +359,7 @@ const TEXT = {
   fig5: 'แผนภาพความร้อนค่าเบี่ยงเบน ปี × เดือน (Anomaly Heatmap)',              // รูปที่ 5
   fig6: 'วัฏจักรฤดูกาล อ่าวไทยกับอันดามัน (Seasonal Cycle)',                    // รูปที่ 6
   fig7: 'ความสัมพันธ์ SST กับ Chl-a แยกตามฤดูมรสุม (Monsoon Relationship)',       // รูปที่ 7
-  fig8: 'อัตราการเปลี่ยนแปลงต่อ 10 ปี รายพื้นที่ (Decadal Trend)',                 // รูปที่ 8
-  fig9: 'เปรียบเทียบค่าเบี่ยงเบนรายเดือน : SST กับ Chl-a (Inverse Relationship)',    // รูปที่ 9 (ช่วงเดือนต่อท้ายอัตโนมัติ)
+  fig8: 'เปรียบเทียบค่าเบี่ยงเบนรายเดือน : SST กับ Chl-a (Inverse Relationship)',    // รูปที่ 8 (ช่วงเดือนต่อท้ายอัตโนมัติ)
   sources: 'แหล่งข้อมูลและข้อจำกัด',                                                // หัวตารางแหล่งข้อมูล
 };
 
@@ -1029,12 +1023,12 @@ function renderCharts() {
     plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => c.dataset.label + ': ' + fmt(c.parsed.y) + ' ' + u + (c.datasetIndex === 0 && !yearly[c.dataIndex].full ? ' (ข้อมูลไม่ครบปี)' : '') } } },
     scales: { y: { title: { display: true, text: u } } } }) });
 
-  // รูปที่ 9 เปรียบเทียบ SST กับ Chl-a anomaly: 12 เดือนย้อนหลังนับจากเดือนที่เลือก (มีพื้นที่ใต้กราฟ)
+  // รูปที่ 8 เปรียบเทียบ SST กับ Chl-a anomaly: 12 เดือนย้อนหลังนับจากเดือนที่เลือก (มีพื้นที่ใต้กราฟ)
   const corr = rows => { const q = rows.filter(r => r.a !== null && r.b !== null); return pearson(q.map(r => r.a), q.map(r => r.b)); };
   const allRows = [];
   D.years.forEach(y => { for (let m = 1; m <= 12; m++) allRows.push({ a: metric('anomaly', 'SST', z, y, m), b: metric('anomaly', 'CHLA', z, y, m) }); });
   const rows5 = last12.map(r => ({ y: r.y, m: r.m, a: metric('anomaly', 'SST', z, r.y, r.m), b: metric('anomaly', 'CHLA', z, r.y, r.m) }));
-  document.getElementById('f9Title').textContent = TEXT.fig9 + ' (' + MONTHS_SHORT[f.m - 1] + ' ' + f.y + ' – ' + MONTHS_SHORT[l.m - 1] + ' ' + l.y + ')';
+  document.getElementById('f9Title').textContent = TEXT.fig8 + ' (' + MONTHS_SHORT[f.m - 1] + ' ' + f.y + ' – ' + MONTHS_SHORT[l.m - 1] + ' ' + l.y + ')';
   const r12 = corr(rows5), rAll = corr(allRows);
   document.getElementById('f9Corr').textContent = (r12 === null ? 'ข้อมูล 12 เดือนไม่พอคำนวณสหสัมพันธ์' : 'สหสัมพันธ์ 12 เดือนนี้ r = ' + fmtS(r12, 2)) +
     (rAll === null ? '' : ' · ทั้งช่วงข้อมูล r = ' + fmtS(rAll, 2));
@@ -1052,7 +1046,7 @@ function renderCharts() {
   renderNewCharts();
 }
 
-/* ---------------- รูปที่ 5–8 ---------------- */
+/* ---------------- รูปที่ 5–7 ---------------- */
 
 const SEASONS = [
   { key: 'ne', name: 'มรสุมตะวันออกเฉียงเหนือ', short: 'มรสุม NE', months: [11, 12, 1, 2], color: '#2A78D6', style: 'circle' },
@@ -1122,22 +1116,6 @@ function renderNewCharts() {
       tooltip: { callbacks: { label: c => c.raw.t ? c.raw.t + ': SST ' + fmtS(c.raw.x) + ' · Chl-a ' + fmtS(c.raw.y) : c.dataset.label } } },
     scales: { x: { title: { display: true, text: 'SST anomaly (' + PARAMS.SST.unit + ')' }, grid: { color: c => c.tick.value === 0 ? '#9FB3C4' : 'rgba(0,0,0,.06)' } },
       y: { title: { display: true, text: 'Chl-a anomaly (' + PARAMS.CHLA.unit + ')' }, grid: { color: c => c.tick.value === 0 ? '#9FB3C4' : 'rgba(0,0,0,.06)' } } } }) });
-
-  // รูปที่ 8 อัตราการเปลี่ยนแปลงต่อ 10 ปี ทุกพื้นที่ (เฉพาะปีที่มีข้อมูลครบ 12 เดือน)
-  document.getElementById('f8Title').textContent = TEXT.fig8 + ' · ' + PARAMS[p].short;
-  const rates = D.zones.map(zz => {
-    const xs = [], ys = [];
-    D.years.forEach(y => { const v = []; for (let m = 1; m <= 12; m++) { const x = metric('value', p, zz.name, y, m); if (x !== null) v.push(x); } if (v.length === 12) { xs.push(y); ys.push(avg(v)); } });
-    const rg = linreg(xs, ys);
-    return { name: zz.name, rate: rg ? rg.b * 10 : null };
-  });
-  const pos = p === 'SST' ? '#E24B4A' : '#23955A', neg = p === 'SST' ? '#378ADD' : '#C98A0B';
-  draw('chartRate', { type: 'bar', data: { labels: rates.map(r => r.name), datasets: [{ label: 'ต่อ 10 ปี', data: rates.map(r => r.rate),
-      backgroundColor: rates.map(r => r.rate === null ? 'transparent' : r.rate >= 0 ? pos : neg),
-      borderColor: rates.map(r => r.name === z ? navy : 'transparent'), borderWidth: rates.map(r => r.name === z ? 2.5 : 0), borderRadius: 4, maxBarThickness: 46 }] },
-    options: baseOptions({ plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => c.parsed.y === null ? 'ข้อมูลไม่พอ' : fmtS(c.parsed.y, 3) + ' ' + u + ' ต่อ 10 ปี' } } },
-      scales: { x: { ticks: { autoSkip: false, maxRotation: 30, font: c => ({ weight: rates[c.index] && rates[c.index].name === z ? '600' : '400' }) } },
-        y: { title: { display: true, text: u + ' ต่อ 10 ปี' }, grid: { color: c => c.tick.value === 0 ? navy : 'rgba(0,0,0,.06)' } } } }) });
 }
 
 /* ---------------- เนื้อหาและหัวเว็บ ---------------- */
@@ -1183,7 +1161,7 @@ function renderSources() {
   if (!rows.length) { box.hidden = true; return; }
   const pick = t => /limit|ข้อจำกัด/i.test(t) ? 'alert' : /sensor|เซนเซอร์|platform|ดาวเทียม/i.test(t) ? 'satellite' : /sst/i.test(t) ? 'thermo' :
     /chl|คลอโรฟิลล์/i.test(t) ? 'plankton' : /climatology/i.test(t) ? 'chart' : /anomaly|เบี่ยงเบน/i.test(t) ? 'sigma' : 'info';
-  box.innerHTML = '<div class="src-head"><span class="no">3</span><h3>' + esc(TEXT.sources) + '</h3></div>' +
+  box.innerHTML = '<div class="src-head"><h3>' + esc(TEXT.sources) + '</h3></div>' +
     '<div class="src-wrap"><table class="src-table"><thead><tr><th>รายการ</th><th>รายละเอียด</th></tr></thead><tbody>' +
     rows.map(r => { const ic = pick(String(r.title)); return '<tr' + (ic === 'alert' ? ' class="warn"' : '') + '><td>' + svgIcon(ic) + esc(r.title || '') + '</td><td>' + esc(r.text || '') + '</td></tr>'; }).join('') +
     '</tbody></table></div>';
