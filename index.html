@@ -488,7 +488,11 @@ function buildData(db, settingsRows, zoneRows, contentRows) {
     }
   }));
 
-  D.content = contentRows.filter(r => r.section && (r.text || r.title));
+  // อ่านแท็บ WEB_Content ตามตำแหน่งคอลัมน์ A = section, B = title, C = text (หัวคอลัมน์จะตั้งชื่ออะไรก็ได้)
+  D.content = contentRows.map(r => {
+    const v = Object.values(r);
+    return { section: String(v[0] ?? '').trim(), title: String(v[1] ?? '').trim(), text: String(v[2] ?? '').trim() };
+  }).filter(r => r.section && (r.text || r.title));
 
   Object.keys(PARAMS).forEach(p => { const u = D.settings[PARAMS[p].unitKey]; if (u) PARAMS[p].unit = u; });
 }
@@ -764,6 +768,52 @@ function rasterToDataUrl(r, st) {
   return c.toDataURL();
 }
 
+// แปลงค่าทุกพิกเซลเป็นสีครั้งเดียวต่อภาพ
+function rasterRGBA(r, st) {
+  const out = new Uint8ClampedArray(r.w * r.h * 4);
+  for (let i = 0; i < r.w * r.h; i++) {
+    const v = r.data[i];
+    if (!validPx(v, r.nodata)) continue;
+    const col = st ? sldColor(st, v) : (() => { const h = hex2rgb(colorFor(v)); return [h[0], h[1], h[2], 255]; })();
+    if (!col) continue;
+    out[i * 4] = col[0]; out[i * 4 + 1] = col[1]; out[i * 4 + 2] = col[2]; out[i * 4 + 3] = col[3];
+  }
+  return out;
+}
+
+// วาดภาพดาวเทียมเป็นแผ่นย่อย (tile) ที่ความละเอียดหน้าจอจริง เลือกพิกเซลที่ใกล้ที่สุด จึงคมชัดทุกระดับการซูม
+const RasterTiles = L.GridLayer.extend({
+  createTile(coords) {
+    const size = this.getTileSize(), dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const W = Math.round(size.x * dpr), H = Math.round(size.y * dpr);
+    const tile = document.createElement('canvas');
+    tile.width = W; tile.height = H; tile.style.width = size.x + 'px'; tile.style.height = size.y + 'px';
+    const r = this.options.raster, rgba = this.options.rgba;
+    if (!r) return tile;
+    const ctx = tile.getContext('2d'), img = ctx.createImageData(W, H), px = img.data;
+    const origin = coords.scaleBy(size), resX = (r.x1 - r.x0) / r.w, resY = (r.y1 - r.y0) / r.h;
+    const cols = new Int32Array(W);
+    for (let x = 0; x < W; x++) {
+      const lng = this._map.unproject([origin.x + (x + 0.5) / dpr, origin.y], coords.z).lng;
+      const i = Math.floor((lng - r.x0) / resX); cols[x] = i >= 0 && i < r.w ? i : -1;
+    }
+    for (let y = 0; y < H; y++) {
+      const lat = this._map.unproject([origin.x, origin.y + (y + 0.5) / dpr], coords.z).lat;
+      const j = Math.floor((r.y1 - lat) / resY);
+      if (j < 0 || j >= r.h) continue;
+      const rowSrc = j * r.w, rowDst = y * W;
+      for (let x = 0; x < W; x++) {
+        const i = cols[x]; if (i < 0) continue;
+        const s4 = (rowSrc + i) * 4; if (!rgba[s4 + 3]) continue;
+        const d4 = (rowDst + x) * 4;
+        px[d4] = rgba[s4]; px[d4 + 1] = rgba[s4 + 1]; px[d4 + 2] = rgba[s4 + 2]; px[d4 + 3] = rgba[s4 + 3];
+      }
+    }
+    ctx.putImageData(img, 0, 0);
+    return tile;
+  },
+});
+
 async function updateRaster() {
   const id = layerId(), url = rasterUrl(id, S.year, S.month), token = ++R.token;
   if (R.overlayUrl === url && R.current) return;
@@ -777,10 +827,10 @@ async function updateRaster() {
     renderMapZonesOnly();
     return;
   }
-  const bounds = [[r.y0, r.x0], [r.y1, r.x1]];
-  const img = rasterToDataUrl(r, st);
-  if (R.overlay) R.overlay.setUrl(img).setBounds(L.latLngBounds(bounds));
-  else R.overlay = L.imageOverlay(img, bounds, { pane: 'rasterPane', opacity: RASTER_OPACITY, interactive: false }).addTo(map);
+  const bounds = L.latLngBounds([[r.y0, r.x0], [r.y1, r.x1]]);
+  const rgba = rasterRGBA(r, st);
+  if (R.overlay) { R.overlay.options.raster = r; R.overlay.options.rgba = rgba; R.overlay.options.bounds = bounds; R.overlay.redraw(); }
+  else R.overlay = new RasterTiles({ pane: 'rasterPane', opacity: RASTER_OPACITY, raster: r, rgba, bounds, updateWhenZooming: false, keepBuffer: 3 }).addTo(map);
   const wasMissing = R.missing || !R.current;
   R.current = { r, style: st, id }; R.overlayUrl = url; R.missing = false;
   setNote(st ? '' : 'ไม่พบไฟล์สี ' + id + '.sld ใช้สีมาตรฐานของเว็บแทน', !st);
