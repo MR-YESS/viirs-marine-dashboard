@@ -483,10 +483,18 @@ function buildData(db, settingsRows, zoneRows, contentRows) {
   }));
 
   // อ่านแท็บ WEB_Content ตามตำแหน่งคอลัมน์ A = section, B = title, C = text (หัวคอลัมน์จะตั้งชื่ออะไรก็ได้)
-  D.content = contentRows.map(r => {
+  // แถวที่คอลัมน์ A และ B ว่าง แต่มีข้อความในคอลัมน์ C จะต่อเป็นบรรทัดใหม่ของแถวก่อนหน้า
+  D.content = [];
+  contentRows.forEach(r => {
     const v = Object.values(r);
-    return { section: String(v[0] ?? '').trim(), title: String(v[1] ?? '').trim(), text: String(v[2] ?? '').trim() };
-  }).filter(r => r.section && (r.text || r.title));
+    const row = { section: String(v[0] ?? '').trim(), title: String(v[1] ?? '').trim(), text: String(v[2] ?? '').trim() };
+    if (!row.section && !row.title && row.text && D.content.length) {
+      const last = D.content[D.content.length - 1];
+      last.text = last.text ? last.text + '\n' + row.text : row.text;
+      return;
+    }
+    if (row.section && (row.text || row.title)) D.content.push(row);
+  });
 
   Object.keys(PARAMS).forEach(p => { const u = D.settings[PARAMS[p].unitKey]; if (u) PARAMS[p].unit = u; });
 }
@@ -889,6 +897,9 @@ const ICONS = {
   sigma: '<path d="M18 7V4H6l6 8-6 8h12v-3"/>',
   alert: '<path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/>',
   info: '<circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/>',
+  layers: '<path d="m12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83Z"/><path d="m22 17.65-9.17 4.16a2 2 0 0 1-1.66 0L2 17.65"/><path d="m22 12.65-9.17 4.16a2 2 0 0 1-1.66 0L2 12.65"/>',
+  grid: '<rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M3 15h18M9 3v18M15 3v18"/>',
+  filter: '<path d="M22 3H2l8 9.46V19l4 2v-8.54L22 3z"/>',
   flame: '<path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/>',
 };
 const svgIcon = name => '<svg viewBox="0 0 24 24" aria-hidden="true">' + ICONS[name] + '</svg>';
@@ -1159,8 +1170,19 @@ function renderSources() {
   const rows = D.content.filter(r => String(r.section).trim() === 'sources' && (r.title || r.text));
   const box = document.getElementById('sources');
   if (!rows.length) { box.hidden = true; return; }
-  const pick = t => /limit|ข้อจำกัด/i.test(t) ? 'alert' : /sensor|เซนเซอร์|platform|ดาวเทียม/i.test(t) ? 'satellite' : /sst/i.test(t) ? 'thermo' :
-    /chl|คลอโรฟิลล์/i.test(t) ? 'plankton' : /climatology/i.test(t) ? 'chart' : /anomaly|เบี่ยงเบน/i.test(t) ? 'sigma' : 'info';
+  // เลือกไอคอนจากคำในชื่อรายการ (เรียงลำดับความสำคัญจากบนลงล่าง)
+  const ICON_RULES = [
+    [/limit|ข้อจำกัด/i, 'alert'],
+    [/คัดกรอง|filter|quality|qc/i, 'filter'],
+    [/sensor|เซนเซอร์|platform|ดาวเทียม/i, 'satellite'],
+    [/sst/i, 'thermo'],
+    [/chl|คลอโรฟิลล์/i, 'plankton'],
+    [/ความละเอียด|resolution|กริด|grid/i, 'grid'],
+    [/product|ผลิตภัณฑ์/i, 'layers'],
+    [/climatology/i, 'chart'],
+    [/anomaly|เบี่ยงเบน/i, 'sigma'],
+  ];
+  const pick = t => { const hit = ICON_RULES.find(([re]) => re.test(t)); return hit ? hit[1] : 'info'; };
   box.innerHTML = '<div class="src-head"><h3>' + esc(TEXT.sources) + '</h3></div>' +
     '<div class="src-wrap"><table class="src-table"><thead><tr><th>รายการ</th><th>รายละเอียด</th></tr></thead><tbody>' +
     rows.map(r => { const ic = pick(String(r.title)); return '<tr' + (ic === 'alert' ? ' class="warn"' : '') + '><td>' + svgIcon(ic) + esc(r.title || '') + '</td><td>' + esc(r.text || '') + '</td></tr>'; }).join('') +
